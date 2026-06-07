@@ -1,0 +1,35 @@
+# Trellis / AI agent configs
+.trellis/
+.opencode/
+.claude/
+AGENTS.md
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kotlin / Gradle
+build/
+.gradle/
+local.properties
+*.class
+*.jar
+*.apk
+
+# Kotlin Multiplatform
+.kotlin/
+
+# Android
+.cxx/
+*.aab
+
+# Node (if any tooling uses it)
+node_modules/
+
+# Compiled
+out/
