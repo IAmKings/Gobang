@@ -8,10 +8,15 @@ AGENTS.md
 .idea/
 *.iml
 .vscode/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # Kotlin / Gradle
 build/
@@ -20,16 +25,30 @@ local.properties
 *.class
 *.jar
 *.apk
-
-# Kotlin Multiplatform
+*.kotlin_module
 .kotlin/
 
 # Android
 .cxx/
 *.aab
+.captures
+.externalNativeBuild/
+.cxx/
 
-# Node (if any tooling uses it)
-node_modules/
+# Kotlin Multiplatform / Compose
+kotlin-js-store/yarn.lock
+kotlin-js-store/package.json
+.kotlin/
 
-# Compiled
+# Generated
 out/
+*.log
+
+# Keystore (never commit signing keys)
+*.jks
+*.keystore
+keystore.properties
+
+# Environment / secrets
+.env
+.env.local

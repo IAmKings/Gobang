@@ -1,0 +1,73 @@
+package com.gobang
+
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import com.gobang.model.*
+import com.gobang.ui.screen.GameScreen
+import com.gobang.ui.screen.MainMenuScreen
+import com.gobang.ui.screen.SettingsScreen
+import com.gobang.viewmodel.GameViewModel
+import com.gobang.storage.GameStateRepository
+import kotlinx.coroutines.launch
+
+@Composable
+fun AppContentImpl(modifier: Modifier = Modifier, repository: GameStateRepository? = null) {
+    var currentScreen by remember { mutableStateOf<Screen>(Screen.MainMenu) }
+    var gameMode by remember { mutableStateOf(GameMode.PvAI) }
+    var difficulty by remember { mutableStateOf(Difficulty.Medium) }
+    var hasSavedGame by remember { mutableStateOf(false) }
+    val viewModel = remember { GameViewModel(repository = repository) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(repository) {
+        hasSavedGame = repository != null && repository.loadGame() != null
+    }
+
+    when (val screen = currentScreen) {
+        is Screen.MainMenu -> {
+            MainMenuScreen(
+                onNewGame = { mode, diff ->
+                    gameMode = mode
+                    difficulty = diff
+                    viewModel.newGame(mode, diff)
+                    currentScreen = Screen.Game(mode, diff)
+                },
+                onContinue = {
+                    scope.launch {
+                        viewModel.loadGame()
+                        currentScreen = Screen.Game(gameMode, difficulty)
+                    }
+                },
+                hasSavedGame = hasSavedGame,
+                modifier = modifier,
+            )
+        }
+        is Screen.Game -> {
+            val state by viewModel.state.collectAsState()
+
+            LaunchedEffect(state.isAiThinking) {
+                if (state.isAiThinking) {
+                    viewModel.computeAiMove()
+                }
+            }
+
+            GameScreen(
+                state = state,
+                onCellClick = { row, col -> viewModel.handleUserMove(row, col) },
+                onUndo = { viewModel.undo() },
+                onRedo = { viewModel.redo() },
+                onNewGame = { currentScreen = Screen.MainMenu },
+                onBack = { currentScreen = Screen.MainMenu },
+                modifier = modifier,
+            )
+        }
+        is Screen.Settings -> {
+            SettingsScreen(
+                currentDifficulty = difficulty,
+                onDifficultyChange = { difficulty = it },
+                onBack = { currentScreen = Screen.MainMenu },
+                modifier = modifier,
+            )
+        }
+    }
+}

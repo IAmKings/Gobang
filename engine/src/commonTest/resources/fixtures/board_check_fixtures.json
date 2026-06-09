@@ -1,0 +1,52 @@
+[
+  {
+    "description": "Empty board",
+    "board_dumps": "",
+    "expected_winner": 0
+  },
+  {
+    "description": "Black horizontal five-in-a-row at row 7",
+    "board_dumps": "1:HD 1:HE 1:HF 1:HG 1:HH",
+    "expected_winner": 1
+  },
+  {
+    "description": "White vertical five-in-a-row at col 7",
+    "board_dumps": "2:DH 2:EH 2:FH 2:GH 2:HH",
+    "expected_winner": 2
+  },
+  {
+    "description": "Black diagonal right five-in-a-row",
+    "board_dumps": "1:DD 1:EE 1:FF 1:GG 1:HH",
+    "expected_winner": 1
+  },
+  {
+    "description": "White diagonal left five-in-a-row",
+    "board_dumps": "2:DH 2:EG 2:FF 2:GE 2:HD",
+    "expected_winner": 2
+  },
+  {
+    "description": "Opening position 1: HH and II",
+    "board_dumps": "1:HH 2:II",
+    "expected_winner": 0
+  },
+  {
+    "description": "Black near-win: four in a row",
+    "board_dumps": "1:HD 1:HE 1:HF 1:HG",
+    "expected_winner": 0
+  },
+  {
+    "description": "Complex position with multiple patterns",
+    "board_dumps": "1:HH 2:II 1:HG 2:HI 1:HF 2:HJ",
+    "expected_winner": 0
+  },
+  {
+    "description": "Black wins on edge row",
+    "board_dumps": "1:AA 1:BA 1:CA 1:DA 1:EA",
+    "expected_winner": 1
+  },
+  {
+    "description": "White wins on bottom row",
+    "board_dumps": "2:OA 2:OB 2:OC 2:OD 2:OE",
+    "expected_winner": 2
+  }
+]
