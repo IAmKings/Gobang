@@ -19,6 +19,7 @@ val StoneBlack = Color(0xFF1A1A1A)
 val StoneWhite = Color(0xFFF5F5F5)
 val LastMoveMarker = Color(0xFFFF1744)
 val WinHighlight = Color(0xFFFFD600)
+val StarDot = Color(0xFF4A3728)
 
 private val LightColorScheme = lightColorScheme(
     primary = Amber700,

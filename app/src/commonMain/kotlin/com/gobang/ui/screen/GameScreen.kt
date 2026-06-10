@@ -78,6 +78,7 @@ fun GameScreen(
                 wonPositions = state.wonPositions,
                 lastMove = state.moveHistory.lastOrNull(),
                 onCellClick = onCellClick,
+                enabled = !state.isAiThinking && state.gameResult == null,
                 modifier = Modifier.weight(1f)
             )
 

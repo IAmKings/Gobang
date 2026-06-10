@@ -60,6 +60,7 @@ class GameViewModel(
 
     fun handleUserMove(row: Int, col: Int) {
         val s = _state.value
+        if (s.isAiThinking) return
         applyMove(row, col, s.currentTurn)
     }
 
