@@ -16,6 +16,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 
+/**
+ * 游戏视图模型，管理游戏状态和 AI 逻辑。
+ *
+ * 核心流程：
+ * 1. newGame() → 设置初始状态 → 如果轮到 AI 则触发 AI 思考
+ * 2. handleUserMove() → 用户点击棋盘 → applyMove() → 检查胜负 → 如果轮到 AI 则触发思考
+ * 3. computeAiMove() → 在后台线程运行搜索 → 落子 → 循环检查是否仍需 AI 思考
+ * 4. undo()/redo() → 撤销/重做棋步（AI 模式下自动撤两步）
+ */
 class GameViewModel(
     private val searcher: GobangSearcher = GobangSearcher(),
     private val repository: GameStateRepository? = null,
@@ -25,7 +34,8 @@ class GameViewModel(
 
     private val board = GobangBoard()
 
-    fun newGame(mode: GameMode, difficulty: Difficulty) {
+    /** 开始新游戏，设置开局并根据模式决定是否由 AI 先手 */
+fun newGame(mode: GameMode, difficulty: Difficulty) {
         board.reset()
         var initialBoard = IntArray(15 * 15)
         var initialHistory = emptyList<Move>()
@@ -58,13 +68,15 @@ class GameViewModel(
         }
     }
 
-    fun handleUserMove(row: Int, col: Int) {
+    /** 处理用户落子，AI 思考时禁止操作 */
+fun handleUserMove(row: Int, col: Int) {
         val s = _state.value
         if (s.isAiThinking) return
         applyMove(row, col, s.currentTurn)
     }
 
-    private fun applyMove(row: Int, col: Int, stone: Int) {
+    /** 实际落子逻辑：更新棋盘、检查胜负、触发 AI */
+private fun applyMove(row: Int, col: Int, stone: Int) {
         val s = _state.value
         if (s.gameResult != null) return
         if (s.board[row * 15 + col] != 0) return
@@ -100,7 +112,8 @@ class GameViewModel(
         }
     }
 
-    private fun shouldAiMove(s: GameState): Boolean {
+    /** 判断当前是否应该由 AI 落子 */
+private fun shouldAiMove(s: GameState): Boolean {
         return when (s.gameMode) {
             GameMode.PvAI -> s.currentTurn == 2
             GameMode.AIvP -> s.currentTurn == 1
@@ -109,35 +122,47 @@ class GameViewModel(
         }
     }
 
-    private fun triggerAiMove() {
+    /** 标记 AI 正在思考，触发 UI 层的 LaunchedEffect 调用 computeAiMove */
+private fun triggerAiMove() {
         _state.value = _state.value.copy(isAiThinking = true)
     }
 
-    suspend fun computeAiMove() {
-        val s = _state.value
-        if (!s.isAiThinking) return
-        if (s.gameResult != null) return
-
-        val result = withContext(Dispatchers.Default) {
-            val tempBoard = GobangBoard()
-            tempBoard.loads("")
-            for (i in 0 until 225) {
-                if (s.board[i] != 0) {
-                    tempBoard.put(i / 15, i % 15, s.board[i])
-                }
+    /**
+ * 计算 AI 落子位置。使用 while 循环确保连续 AI 回合也能执行。
+ * 每次搜索完成后落子，然后检查是否仍轮到 AI，如果是则继续搜索。
+ */
+suspend fun computeAiMove() {
+        while (_state.value.isAiThinking) {
+            val s = _state.value
+            if (s.gameResult != null) {
+                _state.value = s.copy(isAiThinking = false)
+                break
             }
-            val depth = s.difficulty.depth
-            searcher.search(tempBoard, s.currentTurn, depth)
-        }
 
-        _state.value = _state.value.copy(isAiThinking = false)
+            val result = withContext(Dispatchers.Default) {
+                val tempBoard = GobangBoard()
+                tempBoard.loads("")
+                for (i in 0 until 225) {
+                    if (s.board[i] != 0) {
+                        tempBoard.put(i / 15, i % 15, s.board[i])
+                    }
+                }
+                val depth = s.difficulty.depth
+                searcher.search(tempBoard, s.currentTurn, depth)
+            }
 
-        if (result.row >= 0 && result.col >= 0) {
-            applyMove(result.row, result.col, _state.value.currentTurn)
+            _state.value = _state.value.copy(isAiThinking = false)
+
+            if (result.row >= 0 && result.col >= 0) {
+                applyMove(result.row, result.col, _state.value.currentTurn)
+            }
+
+            if (_state.value.gameResult != null || !shouldAiMove(_state.value)) break
         }
     }
 
-    fun undo() {
+    /** 撤销棋步，AI 模式下自动撤销两步（人+AI） */
+fun undo() {
         val s = _state.value
         if (s.isAiThinking) return
         if (s.gameResult != null) return
@@ -171,7 +196,8 @@ class GameViewModel(
         )
     }
 
-    fun redo() {
+    /** 重做被撤销的棋步 */
+fun redo() {
         val s = _state.value
         if (s.isAiThinking) return
         if (s.undoStack.isEmpty()) return
@@ -202,7 +228,8 @@ class GameViewModel(
         )
     }
 
-    suspend fun saveGame() {
+    /** 保存游戏到持久化存储 */
+suspend fun saveGame() {
         val repo = repository ?: return
         val s = _state.value
         val savedGame = SavedGame(
@@ -216,7 +243,8 @@ class GameViewModel(
         repo.saveGame(savedGame)
     }
 
-    suspend fun loadGame(): Boolean {
+    /** 从持久化存储恢复游戏 */
+suspend fun loadGame(): Boolean {
         val repo = repository ?: return false
         val savedGame = repo.loadGame() ?: return false
 
@@ -243,7 +271,8 @@ class GameViewModel(
         return true
     }
 
-    suspend fun clearSave() {
+    /** 清除存档 */
+suspend fun clearSave() {
         repository?.clearSave()
     }
 }

@@ -1,5 +1,7 @@
 package com.gobang.ui.screen
 
+/** 设置界面：语言切换和难度选择 */
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.*

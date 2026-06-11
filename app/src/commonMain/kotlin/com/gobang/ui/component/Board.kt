@@ -1,5 +1,12 @@
 package com.gobang.ui.component
 
+/**
+ * 五子棋棋盘组件。
+ * 使用 Canvas 绘制 15×15 的网格线，棋子放置在线的交叉点上。
+ * 列标签 1-15（从左到右），行标签 A-O（从上到下），方便记录棋谱。
+ * 星位标记在 D4、D12、L4、L12 和天元 H8。
+ */
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -22,17 +29,29 @@ import androidx.compose.ui.unit.sp
 import com.gobang.model.Move
 import com.gobang.ui.theme.*
 
+// 列标签：1-15（从左到右）
 private val COL_LABELS = (1..15).map { it.toString() }
+// 行标签：A-O（从上到下）
 private val ROW_LABELS = ('A'..'O').map { it.toString() }
 
+// 星位（天元 + 四角星），行0=A, 行3=D, 行7=H, 行11=L, 列从0开始
+// 星位（天元 + 四角星），行0=A, 行3=D, 行7=H, 行11=L, 列从0开始
 private val STAR_POINTS = setOf(
-    Pair(3, 3),
-    Pair(3, 11),
-    Pair(11, 3),
-    Pair(11, 11),
-    Pair(7, 7),
+    Pair(3, 3),    // D4
+    Pair(3, 11),   // D12
+    Pair(11, 3),   // L4
+    Pair(11, 11),  // L12
+    Pair(7, 7),    // H8 天元
 )
 
+/**
+ * 五子棋棋盘 Composable。
+ * @param boardState 15×15 一维数组（0=空,1=黑,2=白）
+ * @param wonPositions 获胜连线坐标
+ * @param lastMove 最后一步棋
+ * @param onCellClick 点击交叉点回调 (row, col)
+ * @param enabled 是否允许点击（AI 思考时禁用）
+ */
 @Composable
 fun Board(
     boardState: IntArray,

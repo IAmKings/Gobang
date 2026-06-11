@@ -10,6 +10,7 @@ import com.gobang.viewmodel.GameViewModel
 import com.gobang.storage.GameStateRepository
 import kotlinx.coroutines.launch
 
+/** 共享的屏幕导航和 ViewModel 连接逻辑（各平台复用） */
 @Composable
 fun AppContentImpl(modifier: Modifier = Modifier, repository: GameStateRepository? = null) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.MainMenu) }
@@ -45,6 +46,7 @@ fun AppContentImpl(modifier: Modifier = Modifier, repository: GameStateRepositor
         is Screen.Game -> {
             val state by viewModel.state.collectAsState()
 
+            // 监听 AI 思考状态，触发计算
             LaunchedEffect(state.isAiThinking) {
                 if (state.isAiThinking) {
                     viewModel.computeAiMove()

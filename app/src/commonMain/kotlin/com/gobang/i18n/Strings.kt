@@ -1,5 +1,6 @@
 package com.gobang.i18n
 
+/** 中英文字符串表，key 为标识符，value 为翻译文本 */
 object Strings {
     val zh = mapOf(
         "app_title" to "五子棋",

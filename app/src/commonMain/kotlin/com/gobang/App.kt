@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import com.gobang.storage.GameStateRepository
 import com.gobang.ui.theme.GobangTheme
 
+/** 应用入口，包裹主题和系统栏内边距，避免内容被状态栏/刘海遮挡 */
 @Composable
 fun App(repository: GameStateRepository? = null) {
     GobangTheme {

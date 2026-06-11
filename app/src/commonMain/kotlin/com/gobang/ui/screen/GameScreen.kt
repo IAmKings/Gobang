@@ -1,5 +1,7 @@
 package com.gobang.ui.screen
 
+/** 游戏主界面：棋盘 + 状态栏 + 操作按钮 */
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut

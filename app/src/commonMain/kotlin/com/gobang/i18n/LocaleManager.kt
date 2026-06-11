@@ -4,6 +4,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/**
+ * 语言管理器，全局单例。
+ * 默认中文，支持中英文切换，通过 StateFlow 驱动 UI 刷新。
+ */
 object LocaleManager {
     private val _language = MutableStateFlow("zh")
     val language: StateFlow<String> = _language.asStateFlow()

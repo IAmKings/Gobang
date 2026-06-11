@@ -1,5 +1,7 @@
 package com.gobang.ui.screen
 
+/** 主菜单界面：选择游戏模式、难度，开始/继续游戏 */
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -87,26 +89,25 @@ fun MainMenuScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (selectedMode == GameMode.PvAI || selectedMode == GameMode.AIvP || selectedMode == GameMode.AIvAI) {
-            Text(LocaleManager.t("difficulty"), style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Difficulty.entries.forEach { diff ->
-                    FilterChip(
-                        selected = selectedDifficulty == diff,
-                        onClick = { selectedDifficulty = diff },
-                        label = {
-                            Text(when (diff) {
-                                Difficulty.Easy -> LocaleManager.t("diff_easy")
-                                Difficulty.Medium -> LocaleManager.t("diff_medium")
-                                Difficulty.Hard -> LocaleManager.t("diff_hard")
-                            })
-                        }
-                    )
-                }
+        Text(LocaleManager.t("difficulty"), style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Difficulty.entries.forEach { diff ->
+                FilterChip(
+                    selected = selectedDifficulty == diff,
+                    onClick = { selectedDifficulty = diff },
+                    enabled = selectedMode != GameMode.PvP,
+                    label = {
+                        Text(when (diff) {
+                            Difficulty.Easy -> LocaleManager.t("diff_easy")
+                            Difficulty.Medium -> LocaleManager.t("diff_medium")
+                            Difficulty.Hard -> LocaleManager.t("diff_hard")
+                        })
+                    }
+                )
             }
-            Spacer(modifier = Modifier.height(16.dp))
         }
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = { onNewGame(selectedMode, selectedDifficulty) },
