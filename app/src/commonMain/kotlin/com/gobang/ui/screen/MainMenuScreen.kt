@@ -27,21 +27,24 @@ sealed class OpeningChoice {
 
 @Composable
 fun MainMenuScreen(
+    selectedMode: GameMode,
+    selectedDifficulty: Difficulty,
+    selectedOpening: OpeningChoice,
+    onModeChange: (GameMode) -> Unit,
+    onDifficultyChange: (Difficulty) -> Unit,
+    onOpeningChange: (OpeningChoice) -> Unit,
     onNewGame: (GameMode, Difficulty, Opening?) -> Unit,
     onContinue: () -> Unit,
     hasSavedGame: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    var selectedMode by remember { mutableStateOf(GameMode.PvAI) }
-    var selectedDifficulty by remember { mutableStateOf(Difficulty.Medium) }
-    var selectedOpening by remember { mutableStateOf<OpeningChoice>(OpeningChoice.None) }
     var showSettings by remember { mutableStateOf(false) }
     var expandedOpening by remember { mutableStateOf(false) }
 
     if (showSettings) {
         SettingsScreen(
             currentDifficulty = selectedDifficulty,
-            onDifficultyChange = { selectedDifficulty = it },
+            onDifficultyChange = onDifficultyChange,
             onBack = { showSettings = false },
             modifier = modifier,
         )
@@ -80,13 +83,13 @@ fun MainMenuScreen(
                     modifier = Modifier
                         .selectable(
                             selected = selectedMode == mode,
-                            onClick = { selectedMode = mode }
+                            onClick = { onModeChange(mode) }
                         )
                         .fillMaxWidth()
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    RadioButton(selected = selectedMode == mode, onClick = { selectedMode = mode })
+                    RadioButton(selected = selectedMode == mode, onClick = { onModeChange(mode) })
                     Text(
                         text = when (mode) {
                             GameMode.PvAI -> LocaleManager.t("mode_pvai")
@@ -107,7 +110,7 @@ fun MainMenuScreen(
             Difficulty.entries.forEach { diff ->
                 FilterChip(
                     selected = selectedDifficulty == diff,
-                    onClick = { selectedDifficulty = diff },
+                    onClick = { onDifficultyChange(diff) },
                     enabled = selectedMode != GameMode.PvP,
                     label = {
                         Text(when (diff) {
@@ -125,7 +128,6 @@ fun MainMenuScreen(
         Text(LocaleManager.t("opening"), style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 开局选择
         ExposedDropdownMenuBox(
             expanded = expandedOpening,
             onExpandedChange = { expandedOpening = !expandedOpening }
@@ -148,14 +150,14 @@ fun MainMenuScreen(
                 DropdownMenuItem(
                     text = { Text(LocaleManager.t("opening_none")) },
                     onClick = {
-                        selectedOpening = OpeningChoice.None
+                        onOpeningChange(OpeningChoice.None)
                         expandedOpening = false
                     }
                 )
                 DropdownMenuItem(
                     text = { Text(LocaleManager.t("opening_random")) },
                     onClick = {
-                        selectedOpening = OpeningChoice.Random
+                        onOpeningChange(OpeningChoice.Random)
                         expandedOpening = false
                     }
                 )
@@ -165,13 +167,12 @@ fun MainMenuScreen(
                     enabled = false,
                     onClick = {}
                 )
-                // 直止打法（白2=GH，白子在天元上方一步）
                 val directNames = setOf("寒星", "溪月", "疏星", "花月", "残月", "雨月", "金星", "松月", "丘月", "新月", "瑞星", "山月", "游星")
                 OpeningBook.openings.filter { it.name in directNames }.forEach { opening ->
                     DropdownMenuItem(
                         text = { Text(opening.name) },
                         onClick = {
-                            selectedOpening = OpeningChoice.Named(opening)
+                            onOpeningChange(OpeningChoice.Named(opening))
                             expandedOpening = false
                         }
                     )
@@ -182,13 +183,12 @@ fun MainMenuScreen(
                     enabled = false,
                     onClick = {}
                 )
-                // 斜止打法（白2=GI，白子在天元右上方一步）
                 val indirectNames = setOf("长星", "峡月", "恒星", "水月", "流星", "云月", "浦月", "岚月", "银月", "明星", "斜月", "名月", "彗星")
                 OpeningBook.openings.filter { it.name in indirectNames }.forEach { opening ->
                     DropdownMenuItem(
                         text = { Text(opening.name) },
                         onClick = {
-                            selectedOpening = OpeningChoice.Named(opening)
+                            onOpeningChange(OpeningChoice.Named(opening))
                             expandedOpening = false
                         }
                     )

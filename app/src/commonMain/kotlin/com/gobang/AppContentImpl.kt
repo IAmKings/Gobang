@@ -6,6 +6,7 @@ import com.gobang.engine.Opening
 import com.gobang.model.*
 import com.gobang.ui.screen.GameScreen
 import com.gobang.ui.screen.MainMenuScreen
+import com.gobang.ui.screen.OpeningChoice
 import com.gobang.ui.screen.SettingsScreen
 import com.gobang.viewmodel.GameViewModel
 import com.gobang.storage.GameStateRepository
@@ -17,6 +18,7 @@ fun AppContentImpl(modifier: Modifier = Modifier, repository: GameStateRepositor
     var currentScreen by remember { mutableStateOf<Screen>(Screen.MainMenu) }
     var gameMode by remember { mutableStateOf(GameMode.PvAI) }
     var difficulty by remember { mutableStateOf(Difficulty.Medium) }
+    var selectedOpening by remember { mutableStateOf<OpeningChoice>(OpeningChoice.None) }
     var hasSavedGame by remember { mutableStateOf(false) }
     val viewModel = remember { GameViewModel(repository = repository) }
     val scope = rememberCoroutineScope()
@@ -28,6 +30,12 @@ fun AppContentImpl(modifier: Modifier = Modifier, repository: GameStateRepositor
     when (val screen = currentScreen) {
         is Screen.MainMenu -> {
             MainMenuScreen(
+                selectedMode = gameMode,
+                selectedDifficulty = difficulty,
+                selectedOpening = selectedOpening,
+                onModeChange = { gameMode = it },
+                onDifficultyChange = { difficulty = it },
+                onOpeningChange = { selectedOpening = it },
                 onNewGame = { mode, diff, opening ->
                     gameMode = mode
                     difficulty = diff
