@@ -7,7 +7,6 @@ import com.gobang.model.*
 import com.gobang.ui.screen.GameScreen
 import com.gobang.ui.screen.MainMenuScreen
 import com.gobang.ui.screen.OpeningChoice
-import com.gobang.ui.screen.SettingsScreen
 import com.gobang.viewmodel.GameViewModel
 import com.gobang.storage.GameStateRepository
 import kotlinx.coroutines.launch
@@ -68,14 +67,6 @@ fun AppContentImpl(modifier: Modifier = Modifier, repository: GameStateRepositor
                 onUndo = { viewModel.undo() },
                 onRedo = { viewModel.redo() },
                 onNewGame = { currentScreen = Screen.MainMenu },
-                onBack = { currentScreen = Screen.MainMenu },
-                modifier = modifier,
-            )
-        }
-        is Screen.Settings -> {
-            SettingsScreen(
-                currentDifficulty = difficulty,
-                onDifficultyChange = { difficulty = it },
                 onBack = { currentScreen = Screen.MainMenu },
                 modifier = modifier,
             )
