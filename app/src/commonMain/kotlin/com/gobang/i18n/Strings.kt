@@ -42,6 +42,10 @@ object Strings {
         "opening_indirect" to "—— 间接开局 ——",
         "opening_nonstandard" to "—— 非标准 ——",
         "difficulty_always" to "难度",
+        "theme" to "主题",
+        "theme_light" to "浅色",
+        "theme_dark" to "深色",
+        "theme_system" to "跟随系统",
     )
 
     val en = mapOf(
@@ -84,6 +88,10 @@ object Strings {
         "opening_indirect" to "—— Indirect ——",
         "opening_nonstandard" to "—— Non-standard ——",
         "difficulty_always" to "Difficulty",
+        "theme" to "Theme",
+        "theme_light" to "Light",
+        "theme_dark" to "Dark",
+        "theme_system" to "System",
     )
 
     fun get(lang: String, key: String, vararg args: Pair<String, Any>): String {

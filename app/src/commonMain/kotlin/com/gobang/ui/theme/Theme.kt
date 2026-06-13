@@ -48,10 +48,15 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun GobangTheme(
-    darkTheme: Boolean = androidx.compose.foundation.isSystemInDarkTheme(),
+    themeMode: ThemeMode = ThemeMode.System,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val isDark = when (themeMode) {
+        ThemeMode.Light -> false
+        ThemeMode.Dark -> true
+        ThemeMode.System -> androidx.compose.foundation.isSystemInDarkTheme()
+    }
+    val colorScheme = if (isDark) DarkColorScheme else LightColorScheme
     MaterialTheme(
         colorScheme = colorScheme,
         content = content

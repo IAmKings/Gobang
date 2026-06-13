@@ -68,12 +68,6 @@ fun MainMenuScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        TextButton(onClick = { LocaleManager.toggleLanguage() }) {
-            Text(if (LocaleManager.currentLanguage == "zh") "中/EN" else "EN/中")
-        }
-
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(LocaleManager.t("game_mode"), style = MaterialTheme.typography.titleMedium)

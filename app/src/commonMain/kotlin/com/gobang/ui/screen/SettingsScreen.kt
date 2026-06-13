@@ -1,6 +1,6 @@
 package com.gobang.ui.screen
 
-/** 设置界面：语言切换和难度选择 */
+/** 设置界面：语言切换、主题模式和难度选择 */
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.gobang.i18n.LocaleManager
 import com.gobang.model.Difficulty
+import com.gobang.ui.theme.ThemeManager
+import com.gobang.ui.theme.ThemeMode
 
 @Composable
 fun SettingsScreen(
@@ -21,6 +23,9 @@ fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val currentLanguage by LocaleManager.language.collectAsState()
+    val currentThemeMode by ThemeManager.themeMode.collectAsState()
+
     Column(
         modifier = modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -32,15 +37,35 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
-                selected = LocaleManager.currentLanguage == "zh",
+                selected = currentLanguage == "zh",
                 onClick = { LocaleManager.setLanguage("zh") },
                 label = { Text(LocaleManager.t("lang_zh")) }
             )
             FilterChip(
-                selected = LocaleManager.currentLanguage == "en",
+                selected = currentLanguage == "en",
                 onClick = { LocaleManager.setLanguage("en") },
                 label = { Text(LocaleManager.t("lang_en")) }
             )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(LocaleManager.t("theme"), style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThemeMode.entries.forEach { mode ->
+                FilterChip(
+                    selected = currentThemeMode == mode,
+                    onClick = { ThemeManager.setThemeMode(mode) },
+                    label = {
+                        Text(when (mode) {
+                            ThemeMode.Light -> LocaleManager.t("theme_light")
+                            ThemeMode.Dark -> LocaleManager.t("theme_dark")
+                            ThemeMode.System -> LocaleManager.t("theme_system")
+                        })
+                    }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
