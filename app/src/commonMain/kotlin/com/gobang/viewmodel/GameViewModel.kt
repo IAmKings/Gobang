@@ -2,7 +2,7 @@ package com.gobang.viewmodel
 
 import com.gobang.engine.GobangBoard
 import com.gobang.engine.GobangSearcher
-import com.gobang.engine.OpeningBook
+import com.gobang.engine.Opening
 import com.gobang.model.Difficulty
 import com.gobang.model.GameMode
 import com.gobang.model.GameResult
@@ -34,15 +34,14 @@ class GameViewModel(
 
     private val board = GobangBoard()
 
-    /** 开始新游戏，设置开局并根据模式决定是否由 AI 先手 */
-fun newGame(mode: GameMode, difficulty: Difficulty) {
+    /** 开始新游戏，可选指定开局 */
+    fun newGame(mode: GameMode, difficulty: Difficulty, opening: Opening? = null) {
         board.reset()
         var initialBoard = IntArray(15 * 15)
         var initialHistory = emptyList<Move>()
         var initialTurn = 1
 
-        if (mode == GameMode.PvAI || mode == GameMode.AIvP) {
-            val opening = OpeningBook.randomOpening()
+        if (opening != null) {
             for (move in opening.moves) {
                 board.put(move.row, move.col, move.stone)
                 initialBoard[move.row * 15 + move.col] = move.stone
@@ -68,15 +67,15 @@ fun newGame(mode: GameMode, difficulty: Difficulty) {
         }
     }
 
-    /** 处理用户落子，AI 思考时禁止操作 */
-fun handleUserMove(row: Int, col: Int) {
+/** 处理用户落子，AI 思考时禁止操作 */
+    fun handleUserMove(row: Int, col: Int) {
         val s = _state.value
         if (s.isAiThinking) return
         applyMove(row, col, s.currentTurn)
     }
 
-    /** 实际落子逻辑：更新棋盘、检查胜负、触发 AI */
-private fun applyMove(row: Int, col: Int, stone: Int) {
+/** 实际落子逻辑：更新棋盘、检查胜负、触发 AI */
+    private fun applyMove(row: Int, col: Int, stone: Int) {
         val s = _state.value
         if (s.gameResult != null) return
         if (s.board[row * 15 + col] != 0) return
@@ -161,8 +160,8 @@ suspend fun computeAiMove() {
         }
     }
 
-    /** 撤销棋步，AI 模式下自动撤销两步（人+AI） */
-fun undo() {
+/** 撤销棋步，AI 模式下自动撤销两步（人+AI） */
+    fun undo() {
         val s = _state.value
         if (s.isAiThinking) return
         if (s.gameResult != null) return
@@ -196,8 +195,8 @@ fun undo() {
         )
     }
 
-    /** 重做被撤销的棋步 */
-fun redo() {
+/** 重做被撤销的棋步 */
+    fun redo() {
         val s = _state.value
         if (s.isAiThinking) return
         if (s.undoStack.isEmpty()) return

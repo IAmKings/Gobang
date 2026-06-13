@@ -2,6 +2,7 @@ package com.gobang
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.gobang.engine.Opening
 import com.gobang.model.*
 import com.gobang.ui.screen.GameScreen
 import com.gobang.ui.screen.MainMenuScreen
@@ -27,10 +28,10 @@ fun AppContentImpl(modifier: Modifier = Modifier, repository: GameStateRepositor
     when (val screen = currentScreen) {
         is Screen.MainMenu -> {
             MainMenuScreen(
-                onNewGame = { mode, diff ->
+                onNewGame = { mode, diff, opening ->
                     gameMode = mode
                     difficulty = diff
-                    viewModel.newGame(mode, diff)
+                    viewModel.newGame(mode, diff, opening)
                     currentScreen = Screen.Game(mode, diff)
                 },
                 onContinue = {

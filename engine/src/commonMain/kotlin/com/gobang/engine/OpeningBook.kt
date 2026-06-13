@@ -5,7 +5,7 @@ import kotlin.random.Random
 /** 开局着法序列 */
 data class Opening(val moves: List<Move>, val name: String) {
     companion object {
-        /** 从记谱法字符串创建开局，格式如 "1:HH" 表示黑棋(1)下在 H行H列(天元) */
+        /** 从记谱法字符串创建开局，格式如 "1:HH" 表示黑棋下在 H行H列(天元) */
         fun fromNotation(name: String, vararg notations: String): Opening {
             val moves = notations.map { notation ->
                 val parts = notation.split(":")
@@ -21,54 +21,100 @@ data class Opening(val moves: List<Move>, val name: String) {
 }
 
 /**
- * 开局库：基于连珠标准26开局体系。
+ * 开局库：基于连珠标准26开局体系，每局包含前3步（黑-白-黑）。
  *
- * 坐标说明：行和列均用 A(0)~O(14) 表示，H=7 为天元中心。
- * 编号1=黑棋，编号2=白棋。
+ * 坐标系：行和列用 A(0)~O(14)，天元中心 = HH(7,7)。
+ * 棋子编号：1=黑棋，2=白棋（第三手为黑棋，编号1）。
  *
- * 直接开局（D）：第1子和第3子方向相关
- * 间接开局（I）：第1子和第3子方向无关
+ * 直止打法（13种）：白2位于天元上方一步 GH(6,7)。
+ * 斜止打法（13种）：白2位于天元右上方对角一步 GI(6,8)。
  *
- * 此处定义前2步，白棋位置互不重复（旋转/翻转已去重）。
- * 共20个有效开局 + 3个非天元开局。
+ * 数据来源：https://github.com/yutokure/New-Renju/blob/master/joseki.json
+ * 参考：https://zh.wikipedia.org/wiki/连珠开局
  */
 object OpeningBook {
     val openings: List<Opening> = listOf(
-        // ===== 直接开局：白棋紧邻天元（7方向，左下I8与右上GI对称已去重）=====
-        Opening.fromNotation("寒星", "1:HH", "2:HI"),   // D1: 右
-        Opening.fromNotation("花月", "1:HH", "2:II"),   // D4: 右下
-        Opening.fromNotation("雨月", "1:HH", "2:IH"),   // D6: 下
-        Opening.fromNotation("金星", "1:HH", "2:GI"),   // D7: 右上
-        Opening.fromNotation("松月", "1:HH", "2:GH"),   // D8: 上
-        Opening.fromNotation("丘月", "1:HH", "2:GG"),   // D9: 左上
-        Opening.fromNotation("新月", "1:HH", "2:HG"),   // D10: 左
+        // ===== 直止打法（白2 = GH，天元上方一步）=====
 
-        // ===== 直接开局：白棋距天元2~3格 =====
-        Opening.fromNotation("溪月", "1:HH", "2:HJ"),   // D2: 右2
-        Opening.fromNotation("残月", "1:HH", "2:IJ"),   // D5: 右下对角2
-        Opening.fromNotation("瑞星", "1:HH", "2:HF"),   // D11: 左2
-        Opening.fromNotation("疏星", "1:HH", "2:HK"),   // D3: 右3
-        Opening.fromNotation("山月", "1:HH", "2:GJ"),   // D12: 骑士步上右
-        Opening.fromNotation("游星", "1:HH", "2:FI"),   // D13: 远角跳
+        // D1: 寒星 — 黑3在天元正上方两步
+        Opening.fromNotation("寒星", "1:HH", "2:GH", "1:FH"),
 
-        // ===== 间接开局：白棋位置与直接开局不重复 =====
-        Opening.fromNotation("长星", "1:HH", "2:JH"),   // I1: 下2右1
-        Opening.fromNotation("峡月", "1:HH", "2:JJ"),   // I2: 右下2格
-        Opening.fromNotation("恒星", "1:HH", "2:FH"),   // I3: 上2
-        Opening.fromNotation("水月", "1:HH", "2:IG"),   // I4: 下1左1
-        Opening.fromNotation("流星", "1:HH", "2:JG"),   // I5: 下2左1骑士步
-        Opening.fromNotation("云月", "1:HH", "2:IF"),   // I6: 下1左2
-        Opening.fromNotation("浦月", "1:HH", "2:FJ"),   // I7: 上1右2骑士步
-        Opening.fromNotation("岚月", "1:HH", "2:JF"),   // I8: 下2左2
-        Opening.fromNotation("银月", "1:HH", "2:KF"),   // I9: 远上右跳
-        Opening.fromNotation("明星", "1:HH", "2:GF"),   // I10: 上左1
-        Opening.fromNotation("斜月", "1:HH", "2:FG"),   // I11: 上左跳
-        Opening.fromNotation("名月", "1:HH", "2:FK"),   // I12: 远上右3跳
+        // D2: 溪月 — 黑3在白子右上方
+        Opening.fromNotation("溪月", "1:HH", "2:GH", "1:FI"),
 
-        // ===== 非天元开局：黑棋不在中心 =====
-        Opening.fromNotation("偏角", "1:IH", "2:HH"),  // 黑棋偏下，白占天元
-        Opening.fromNotation("偏侧", "1:HG", "2:HH"),  // 黑棋偏左，白占天元
-        Opening.fromNotation("偏角左上", "1:GG", "2:HH"), // 黑棋偏左上，白占天元
+        // D3: 疏星 — 黑3在白子右方远处
+        Opening.fromNotation("疏星", "1:HH", "2:GH", "1:FJ"),
+
+        // D4: 花月 — 黑3在白子右斜一步
+        Opening.fromNotation("花月", "1:HH", "2:GH", "1:GI"),
+
+        // D5: 残月 — 黑3在白子右侧
+        Opening.fromNotation("残月", "1:HH", "2:GH", "1:GJ"),
+
+        // D6: 雨月 — 黑3在天元正右方一步
+        Opening.fromNotation("雨月", "1:HH", "2:GH", "1:HI"),
+
+        // D7: 金星 — 黑3在天元右方两步
+        Opening.fromNotation("金星", "1:HH", "2:GH", "1:HJ"),
+
+        // D8: 松月 — 黑3在天元正下方一步
+        Opening.fromNotation("松月", "1:HH", "2:GH", "1:IH"),
+
+        // D9: 丘月 — 黑3在天元右下方一步
+        Opening.fromNotation("丘月", "1:HH", "2:GH", "1:II"),
+
+        // D10: 新月 — 黑3在天元下方偏右
+        Opening.fromNotation("新月", "1:HH", "2:GH", "1:IJ"),
+
+        // D11: 瑞星 — 黑3在天元正下方两步
+        Opening.fromNotation("瑞星", "1:HH", "2:GH", "1:JH"),
+
+        // D12: 山月 — 黑3在天元下方偏右远处
+        Opening.fromNotation("山月", "1:HH", "2:GH", "1:JI"),
+
+        // D13: 游星 — 黑3在天元右下方远处
+        Opening.fromNotation("游星", "1:HH", "2:GH", "1:JJ"),
+
+        // ===== 斜止打法（白2 = GI，天元右上方对角一步）=====
+
+        // I1: 长星 — 黑3在白子右方远处
+        Opening.fromNotation("长星", "1:HH", "2:GI", "1:FJ"),
+
+        // I2: 峡月 — 黑3在白子右侧
+        Opening.fromNotation("峡月", "1:HH", "2:GI", "1:GJ"),
+
+        // I3: 恒星 — 黑3在天元右方两步
+        Opening.fromNotation("恒星", "1:HH", "2:GI", "1:HJ"),
+
+        // I4: 水月 — 黑3在天元下方偏右
+        Opening.fromNotation("水月", "1:HH", "2:GI", "1:IJ"),
+
+        // I5: 流星 — 黑3在天元右下方远处
+        Opening.fromNotation("流星", "1:HH", "2:GI", "1:JJ"),
+
+        // I6: 云月 — 黑3在天元正右方一步
+        Opening.fromNotation("云月", "1:HH", "2:GI", "1:HI"),
+
+        // I7: 浦月 — 黑3在天元右下方一步
+        Opening.fromNotation("浦月", "1:HH", "2:GI", "1:II"),
+
+        // I8: 岚月 — 黑3在天元下方偏右远处
+        Opening.fromNotation("岚月", "1:HH", "2:GI", "1:JI"),
+
+        // I9: 银月 — 黑3在天元正下方一步
+        Opening.fromNotation("银月", "1:HH", "2:GI", "1:IH"),
+
+        // I10: 明星 — 黑3在天元正下方两步
+        Opening.fromNotation("明星", "1:HH", "2:GI", "1:JH"),
+
+        // I11: 斜月 — 黑3在天元左下方一步
+        Opening.fromNotation("斜月", "1:HH", "2:GI", "1:IG"),
+
+        // I12: 名月 — 黑3在天元左下方远处
+        Opening.fromNotation("名月", "1:HH", "2:GI", "1:JG"),
+
+        // I13: 彗星 — 黑3在天元左下方更远处
+        Opening.fromNotation("彗星", "1:HH", "2:GI", "1:JF"),
     )
 
     /** 随机返回一个开局 */

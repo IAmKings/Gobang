@@ -1,6 +1,8 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.gobang.ui.screen
 
-/** 主菜单界面：选择游戏模式、难度，开始/继续游戏 */
+/** 主菜单界面：选择游戏模式、难度、开局，开始/继续游戏 */
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
@@ -10,21 +12,31 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.gobang.engine.Opening
+import com.gobang.engine.OpeningBook
 import com.gobang.i18n.LocaleManager
 import com.gobang.model.Difficulty
 import com.gobang.model.GameMode
 
+/** 开局选项：null=无，"random"=随机，其他=具体开局名 */
+sealed class OpeningChoice {
+    data object None : OpeningChoice()
+    data object Random : OpeningChoice()
+    data class Named(val opening: Opening) : OpeningChoice()
+}
+
 @Composable
 fun MainMenuScreen(
-    onNewGame: (GameMode, Difficulty) -> Unit,
+    onNewGame: (GameMode, Difficulty, Opening?) -> Unit,
     onContinue: () -> Unit,
     hasSavedGame: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val lang by LocaleManager.language.collectAsState()
     var selectedMode by remember { mutableStateOf(GameMode.PvAI) }
     var selectedDifficulty by remember { mutableStateOf(Difficulty.Medium) }
+    var selectedOpening by remember { mutableStateOf<OpeningChoice>(OpeningChoice.None) }
     var showSettings by remember { mutableStateOf(false) }
+    var expandedOpening by remember { mutableStateOf(false) }
 
     if (showSettings) {
         SettingsScreen(
@@ -89,7 +101,7 @@ fun MainMenuScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(LocaleManager.t("difficulty"), style = MaterialTheme.typography.titleMedium)
+        Text(LocaleManager.t("difficulty_always"), style = MaterialTheme.typography.titleMedium)
         Spacer(modifier = Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Difficulty.entries.forEach { diff ->
@@ -107,10 +119,94 @@ fun MainMenuScreen(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(LocaleManager.t("opening"), style = MaterialTheme.typography.titleMedium)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 开局选择
+        ExposedDropdownMenuBox(
+            expanded = expandedOpening,
+            onExpandedChange = { expandedOpening = !expandedOpening }
+        ) {
+            OutlinedTextField(
+                value = when (selectedOpening) {
+                    is OpeningChoice.None -> LocaleManager.t("opening_none")
+                    is OpeningChoice.Random -> LocaleManager.t("opening_random")
+                    is OpeningChoice.Named -> (selectedOpening as OpeningChoice.Named).opening.name
+                },
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                label = { Text(LocaleManager.t("opening")) }
+            )
+            ExposedDropdownMenu(
+                expanded = expandedOpening,
+                onDismissRequest = { expandedOpening = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text(LocaleManager.t("opening_none")) },
+                    onClick = {
+                        selectedOpening = OpeningChoice.None
+                        expandedOpening = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(LocaleManager.t("opening_random")) },
+                    onClick = {
+                        selectedOpening = OpeningChoice.Random
+                        expandedOpening = false
+                    }
+                )
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text(LocaleManager.t("opening_direct"), style = MaterialTheme.typography.labelSmall) },
+                    enabled = false,
+                    onClick = {}
+                )
+                // 直止打法（白2=GH，白子在天元上方一步）
+                val directNames = setOf("寒星", "溪月", "疏星", "花月", "残月", "雨月", "金星", "松月", "丘月", "新月", "瑞星", "山月", "游星")
+                OpeningBook.openings.filter { it.name in directNames }.forEach { opening ->
+                    DropdownMenuItem(
+                        text = { Text(opening.name) },
+                        onClick = {
+                            selectedOpening = OpeningChoice.Named(opening)
+                            expandedOpening = false
+                        }
+                    )
+                }
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text(LocaleManager.t("opening_indirect"), style = MaterialTheme.typography.labelSmall) },
+                    enabled = false,
+                    onClick = {}
+                )
+                // 斜止打法（白2=GI，白子在天元右上方一步）
+                val indirectNames = setOf("长星", "峡月", "恒星", "水月", "流星", "云月", "浦月", "岚月", "银月", "明星", "斜月", "名月", "彗星")
+                OpeningBook.openings.filter { it.name in indirectNames }.forEach { opening ->
+                    DropdownMenuItem(
+                        text = { Text(opening.name) },
+                        onClick = {
+                            selectedOpening = OpeningChoice.Named(opening)
+                            expandedOpening = false
+                        }
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { onNewGame(selectedMode, selectedDifficulty) },
+            onClick = {
+                val opening = when (selectedOpening) {
+                    is OpeningChoice.None -> null
+                    is OpeningChoice.Random -> OpeningBook.randomOpening()
+                    is OpeningChoice.Named -> (selectedOpening as OpeningChoice.Named).opening
+                }
+                onNewGame(selectedMode, selectedDifficulty, opening)
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(LocaleManager.t("start_game"))

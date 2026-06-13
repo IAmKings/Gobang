@@ -35,6 +35,13 @@ object Strings {
         "redo" to "重做",
         "menu" to "菜单",
         "new_game" to "新局",
+        "opening" to "开局",
+        "opening_random" to "随机",
+        "opening_none" to "无",
+        "opening_direct" to "—— 直接开局 ——",
+        "opening_indirect" to "—— 间接开局 ——",
+        "opening_nonstandard" to "—— 非标准 ——",
+        "difficulty_always" to "难度",
     )
 
     val en = mapOf(
@@ -70,6 +77,13 @@ object Strings {
         "redo" to "Redo",
         "menu" to "Menu",
         "new_game" to "New Game",
+        "opening" to "Opening",
+        "opening_random" to "Random",
+        "opening_none" to "None",
+        "opening_direct" to "—— Direct ——",
+        "opening_indirect" to "—— Indirect ——",
+        "opening_nonstandard" to "—— Non-standard ——",
+        "difficulty_always" to "Difficulty",
     )
 
     fun get(lang: String, key: String, vararg args: Pair<String, Any>): String {
