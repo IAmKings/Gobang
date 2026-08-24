@@ -61,7 +61,7 @@ class GobangEvaluatorTest {
     }
 
     @Test
-    fun `analysisLine detects FOUR (open four)`() {
+    fun `analysisLine detects open four`() {
         val line = IntArray(30) { 0xf }
         line[0] = 0
         line[1] = 0
@@ -77,7 +77,7 @@ class GobangEvaluatorTest {
     }
 
     @Test
-    fun `analysisLine detects SFOUR (blocked four)`() {
+    fun `analysisLine detects blocked four`() {
         val line = IntArray(30) { 0xf }
         line[0] = 2
         line[1] = 1
