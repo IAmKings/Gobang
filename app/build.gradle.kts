@@ -41,6 +41,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.onnxruntime.android)
         }
         getByName("jvmMain").dependencies {
             implementation(compose.desktop.currentOs)
