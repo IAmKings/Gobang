@@ -39,3 +39,8 @@ The upstream self-play smoke is recorded in
 `selfplay-smoke-15x15.json`. It proves the 15x15 training loop can run on the
 M4 after the temporary NumPy compatibility patch, but it is not sufficient to
 produce a production-strength checkpoint.
+
+The reproducible 64-channel server baseline smoke is recorded in
+`server-baseline-smoke-15x15.json`. It validates the checked-in launcher,
+checkpoint shape, and ONNX export path; the generated model remains outside
+source control.

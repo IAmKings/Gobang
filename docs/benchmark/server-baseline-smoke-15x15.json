@@ -1,0 +1,26 @@
+{
+  "source": "Nagi-ovo/alphazero-gomoku",
+  "source_commit": "11146dba12d7d5886cd3430567c71de9607297eb",
+  "profile": "smoke",
+  "board_size": 15,
+  "num_channels": 64,
+  "mcts_simulations": 4,
+  "selfplay_episodes": 1,
+  "training_iterations": 1,
+  "training_epochs": 1,
+  "training_batches": 29,
+  "checkpoint_sha256": "fb2820c76ef21d2fbf6bc6aa6729bdaa9dbe60843518648a95ae3341fb9365dc",
+  "state_dict_shapes": {
+    "fc1.weight": [1024, 7744],
+    "fc3.weight": [225, 512],
+    "fc4.weight": [1, 512]
+  },
+  "onnx_model_version": "server-baseline-smoke-15x15-64ch",
+  "onnx_sha256": "5e0859aa8cd3222892e27ca8863ec4ef77b7c52dc8bfd636f42267998610c9e8",
+  "golden_cases": 13,
+  "policy_max_abs_error": 4.19095e-09,
+  "value_max_abs_error": 5.58794e-09,
+  "arena_result": "candidate rejected because one smoke game had no decisive result",
+  "status": "baseline-launcher-and-contract-smoke-pass",
+  "artifacts_committed": false
+}

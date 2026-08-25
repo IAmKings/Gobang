@@ -1,0 +1,50 @@
+# Reproducible 15x15 server baseline. Generated upstream configs stay outside
+# the repository; checkpoint_dir is intentionally an operator-supplied path.
+source:
+  repository: https://github.com/Nagi-ovo/alphazero-gomoku.git
+  commit: 11146dba12d7d5886cd3430567c71de9607297eb
+  entrypoint: alphazero.py
+
+baseline:
+  board_size: 15
+  num_channels: 64
+  dropout: 0.1
+  min_lr: 0.0001
+  max_lr: 0.001
+  grad_clip: 1.0
+  cpuct: 1.0
+
+profiles:
+  smoke:
+    epochs: 1
+    batch_size: 8
+    num_iterations: 1
+    num_episodes: 1
+    max_queue_length: 512
+    num_iters_history: 1
+    update_threshold: 0.0
+    arena_compare: 1
+    temp_threshold: 3
+    num_sims: 4
+  pilot:
+    epochs: 5
+    batch_size: 128
+    num_iterations: 5
+    num_episodes: 20
+    max_queue_length: 50000
+    num_iters_history: 5
+    update_threshold: 0.55
+    arena_compare: 20
+    temp_threshold: 15
+    num_sims: 128
+  production:
+    epochs: 10
+    batch_size: 256
+    num_iterations: 100
+    num_episodes: 100
+    max_queue_length: 200000
+    num_iters_history: 20
+    update_threshold: 0.55
+    arena_compare: 40
+    temp_threshold: 15
+    num_sims: 800

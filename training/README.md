@@ -60,3 +60,26 @@ checkpoint. Evidence is in
 `docs/benchmark/selfplay-smoke-15x15.json`.
 
 Artifacts are intentionally generated outside source control: `model.onnx`, `model_manifest.json`, and `golden.json`. The generated manifest records SHA-256 hashes for both the source checkpoint and ONNX file. `training/model_manifest.json` is only the unexported contract template and must not be shipped as a model manifest.
+
+## Server baseline launcher
+
+The checked-in server baseline targets the original network at 64 channels on
+15x15. Install the server dependencies in a CUDA-enabled virtualenv, clone the
+upstream source at the commit recorded in `server-baseline.yaml`, and keep
+checkpoints on persistent server storage:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install -r training/server-requirements.txt
+python3 training/launch_server_baseline.py \
+  --source-dir /opt/alphazero-gomoku \
+  --checkpoint-dir /mnt/checkpoints/gomoku-15x15-64ch \
+  --profile pilot
+```
+
+The command is dry-run by default and prints the generated upstream config
+and exact training command. Add `--run` only on the intended server. Profiles
+are `smoke`, `pilot`, and `production`; generated configs and checkpoints are
+never written to Git. The server dependency file pins `numpy<2` because the
+upstream source calls the removed `ndarray.tostring()` API.
