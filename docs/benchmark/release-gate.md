@@ -7,7 +7,8 @@
 | Android model manifest/hash validation | PASS | `:app:testDebugUnitTest` |
 | M4 Android debug APK compilation | PASS | `assembleDebug` |
 | PyTorch/desktop ORT/Android ORT golden parity | DEFERRED | No real checkpoint/model asset in repository |
-| Android emulator and ARM64 device benchmark | DEFERRED | Device run not available in this workspace |
+| Android ARM64 device install/launch/gameplay smoke | PASS | `device-PJZ110-smoke.json`; latency remains legacy-fallback only |
+| Android emulator and ARM64 device performance benchmark | DEFERRED | No real ONNX model asset; emulator run still unavailable |
 | Ordinary difficulty P95 <= 2 s | DEFERRED | Requires model asset and device benchmark |
 | 20-minute ANR/leak soak | DEFERRED | Requires emulator/ARM64 device run |
 

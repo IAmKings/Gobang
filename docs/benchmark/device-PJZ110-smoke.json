@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "status": "smoke_pass",
+  "captured_at": "2026-08-25",
+  "commit": "947f07e",
+  "package": "com.gobang",
+  "build_type": "debug",
+  "device": {
+    "model": "PJZ110",
+    "abi": "arm64-v8a",
+    "android_api": 36
+  },
+  "model_path": {
+    "status": "absent",
+    "runtime": "legacy_fallback",
+    "model_sha256": null
+  },
+  "checks": {
+    "install": true,
+    "launch": true,
+    "enter_game": true,
+    "human_move_and_ai_reply": true,
+    "process_alive_after_interaction": true,
+    "fatal_exception_seen": false
+  },
+  "sample": {
+    "total_pss_kb": 123722,
+    "total_rss_kb": 285572,
+    "rendered_frames": 29,
+    "janky_frames": 2,
+    "frame_p95_ms": 26,
+    "ai_move_p95_ms": null
+  }
+}
