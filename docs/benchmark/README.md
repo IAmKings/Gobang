@@ -28,6 +28,9 @@ Required result fields:
 
 The current MVP has a deterministic 1,000-position legality regression in
 `AlphaZeroRandomPositionTest`. An ARM64 device is available and the app has
-passed install/launch/gameplay smoke, but model parity and latency remain
-deferred: the inspected upstream Nagi-ovo checkpoint is 9x9 while this app's
-contract is fixed at 15x15.
+passed install/launch/gameplay smoke with a temporary 15x15 contract-smoke
+model. Production model parity and latency remain deferred: the inspected
+upstream Nagi-ovo checkpoint is 9x9 while this app's contract is fixed at
+15x15. The smoke evidence is recorded in
+`device-PJZ110-bootstrap-model-smoke.json`; its generated model is not
+committed.

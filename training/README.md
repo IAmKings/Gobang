@@ -29,4 +29,21 @@ python3 training/validate_onnx.py \
 
 `--device auto` selects MPS on Apple Silicon when available, then CUDA, then CPU. Export is finalized on CPU for portable ONNX output. A 9x9 checkpoint or a checkpoint trained with another `num_channels` value is rejected with a shape diagnostic; use `--num-channels` only when it matches the original 15x15 checkpoint.
 
+## Contract-only 15x15 bootstrap
+
+When no compatible 15x15 checkpoint is available, a short deterministic
+supervised bootstrap can validate the artifact pipeline on the M4:
+
+```bash
+python3 training/bootstrap_train.py \
+  --steps 2 \
+  --output /private/tmp/alphazero-gomoku/bootstrap-smoke.pth.tar
+```
+
+This produces a `contract-smoke-only` checkpoint from immediate-win tactical
+positions. It is not an AlphaZero self-play model and must not be shipped or
+used for strength claims. Use it only with the export and golden commands
+above to verify the 15x15 shapes and runtime wiring. Production quality still
+requires a separate self-play training run.
+
 Artifacts are intentionally generated outside source control: `model.onnx`, `model_manifest.json`, and `golden.json`. The generated manifest records SHA-256 hashes for both the source checkpoint and ONNX file. `training/model_manifest.json` is only the unexported contract template and must not be shipped as a model manifest.
