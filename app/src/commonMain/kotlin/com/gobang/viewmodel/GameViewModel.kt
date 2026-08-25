@@ -28,14 +28,21 @@ import kotlinx.coroutines.withContext
 class GameViewModel(
     private val searcher: GobangSearcher = GobangSearcher(),
     private val repository: GameStateRepository? = null,
+    private val aiEngine: AiSearchEngine = LegacyAiSearchEngine(searcher),
 ) {
     private val _state = MutableStateFlow(GameState())
     val state: StateFlow<GameState> = _state.asStateFlow()
 
+    private val _aiRequestToken = MutableStateFlow(0L)
+    val aiRequestToken: StateFlow<Long> = _aiRequestToken.asStateFlow()
+
     private val board = GobangBoard()
+    private var aiRequestGeneration = 0L
 
     /** 开始新游戏，可选指定开局 */
     fun newGame(mode: GameMode, difficulty: Difficulty, opening: Opening? = null) {
+        invalidateAiRequest()
+        aiEngine.clearTree()
         board.reset()
         var initialBoard = IntArray(15 * 15)
         var initialHistory = emptyList<Move>()
@@ -105,6 +112,7 @@ class GameViewModel(
             gameResult = gameResult,
             wonPositions = wonPositions,
         )
+        aiEngine.advanceRoot(row * 15 + col)
 
         if (gameResult == null && shouldAiMove(_state.value)) {
             triggerAiMove()
@@ -131,7 +139,9 @@ private fun triggerAiMove() {
  * 每次搜索完成后落子，然后检查是否仍轮到 AI，如果是则继续搜索。
  */
 suspend fun computeAiMove() {
-        while (_state.value.isAiThinking) {
+        val requestGeneration = aiRequestGeneration
+        try {
+            while (_state.value.isAiThinking && aiRequestGeneration == requestGeneration) {
             val s = _state.value
             if (s.gameResult != null) {
                 _state.value = s.copy(isAiThinking = false)
@@ -146,9 +156,14 @@ suspend fun computeAiMove() {
                         tempBoard.put(i / 15, i % 15, s.board[i])
                     }
                 }
-                val depth = s.difficulty.depth
-                searcher.search(tempBoard, s.currentTurn, depth)
+                aiEngine.search(
+                    tempBoard,
+                    s.currentTurn,
+                    AiDifficultyConfig.forDifficulty(s.difficulty),
+                )
             }
+
+            if (aiRequestGeneration != requestGeneration) return
 
             _state.value = _state.value.copy(isAiThinking = false)
 
@@ -157,6 +172,11 @@ suspend fun computeAiMove() {
             }
 
             if (_state.value.gameResult != null || !shouldAiMove(_state.value)) break
+            }
+        } finally {
+            if (aiRequestGeneration == requestGeneration && _state.value.isAiThinking) {
+                _state.value = _state.value.copy(isAiThinking = false)
+            }
         }
     }
 
@@ -166,6 +186,9 @@ suspend fun computeAiMove() {
         if (s.isAiThinking) return
         if (s.gameResult != null) return
         if (s.moveHistory.isEmpty()) return
+
+        invalidateAiRequest()
+        aiEngine.clearTree()
 
         val stepsToUndo = when (s.gameMode) {
             GameMode.PvAI -> if (s.moveHistory.size >= 2) 2 else 1
@@ -201,6 +224,9 @@ suspend fun computeAiMove() {
         if (s.isAiThinking) return
         if (s.undoStack.isEmpty()) return
         if (s.gameResult != null) return
+
+        invalidateAiRequest()
+        aiEngine.clearTree()
 
         val redoCount = when (s.gameMode) {
             GameMode.PvAI -> if (s.undoStack.size >= 2) 2 else 1
@@ -243,8 +269,10 @@ suspend fun saveGame() {
     }
 
     /** 从持久化存储恢复游戏 */
-suspend fun loadGame(): Boolean {
+    suspend fun loadGame(): Boolean {
         val repo = repository ?: return false
+        invalidateAiRequest()
+        aiEngine.clearTree()
         val savedGame = repo.loadGame() ?: return false
 
         board.reset()
@@ -271,7 +299,15 @@ suspend fun loadGame(): Boolean {
     }
 
     /** 清除存档 */
-suspend fun clearSave() {
+    suspend fun clearSave() {
         repository?.clearSave()
+    }
+
+    private fun invalidateAiRequest() {
+        aiRequestGeneration++
+        _aiRequestToken.value = aiRequestGeneration
+        if (_state.value.isAiThinking) {
+            _state.value = _state.value.copy(isAiThinking = false)
+        }
     }
 }

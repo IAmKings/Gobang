@@ -53,9 +53,10 @@ fun AppContentImpl(modifier: Modifier = Modifier, repository: GameStateRepositor
         }
         is Screen.Game -> {
             val state by viewModel.state.collectAsState()
+            val aiRequestToken by viewModel.aiRequestToken.collectAsState()
 
             // 监听 AI 思考状态，触发计算
-            LaunchedEffect(state.isAiThinking) {
+            LaunchedEffect(state.isAiThinking, aiRequestToken) {
                 if (state.isAiThinking) {
                     viewModel.computeAiMove()
                 }
