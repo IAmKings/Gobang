@@ -1,8 +1,10 @@
 package com.gobang.viewmodel
 
 import com.gobang.engine.AlphaZeroSearchConfig
+import com.gobang.engine.AlphaZeroSearcher
 import com.gobang.engine.GobangBoard
 import com.gobang.engine.GobangSearcher
+import com.gobang.engine.PolicyValuePredictor
 import com.gobang.engine.SearchResult
 import com.gobang.model.Difficulty
 
@@ -21,6 +23,30 @@ class LegacyAiSearchEngine(
 ) : AiSearchEngine {
     override suspend fun search(board: GobangBoard, turn: Int, config: AlphaZeroSearchConfig): SearchResult {
         return searcher.search(board, turn, config.legacyDepth)
+    }
+}
+
+/** Reuses one AlphaZero tree for each search budget/model configuration. */
+class AlphaZeroAiSearchEngine(
+    private val predictor: PolicyValuePredictor,
+) : AiSearchEngine {
+    private val searchers = mutableMapOf<AlphaZeroSearchConfig, AlphaZeroSearcher>()
+
+    override suspend fun search(
+        board: GobangBoard,
+        turn: Int,
+        config: AlphaZeroSearchConfig,
+    ): SearchResult {
+        val searcher = searchers.getOrPut(config) { AlphaZeroSearcher(predictor, config) }
+        return searcher.search(board, turn)
+    }
+
+    override fun clearTree() {
+        searchers.values.forEach(AlphaZeroSearcher::clearTree)
+    }
+
+    override fun advanceRoot(action: Int): Boolean {
+        return searchers.values.any { it.advanceRoot(action) }
     }
 }
 

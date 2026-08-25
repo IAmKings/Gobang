@@ -8,18 +8,25 @@ import com.gobang.ui.screen.GameScreen
 import com.gobang.ui.screen.MainMenuScreen
 import com.gobang.ui.screen.OpeningChoice
 import com.gobang.viewmodel.GameViewModel
+import com.gobang.viewmodel.AiSearchEngine
 import com.gobang.storage.GameStateRepository
 import kotlinx.coroutines.launch
 
 /** 共享的屏幕导航和 ViewModel 连接逻辑（各平台复用） */
 @Composable
-fun AppContentImpl(modifier: Modifier = Modifier, repository: GameStateRepository? = null) {
+fun AppContentImpl(
+    modifier: Modifier = Modifier,
+    repository: GameStateRepository? = null,
+    aiEngine: AiSearchEngine? = null,
+) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.MainMenu) }
     var gameMode by remember { mutableStateOf(GameMode.PvAI) }
     var difficulty by remember { mutableStateOf(Difficulty.Medium) }
     var selectedOpening by remember { mutableStateOf<OpeningChoice>(OpeningChoice.None) }
     var hasSavedGame by remember { mutableStateOf(false) }
-    val viewModel = remember { GameViewModel(repository = repository) }
+    val viewModel = remember(repository, aiEngine) {
+        GameViewModel(repository = repository, aiEngine = aiEngine ?: com.gobang.viewmodel.LegacyAiSearchEngine())
+    }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(repository) {

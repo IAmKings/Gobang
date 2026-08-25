@@ -7,6 +7,7 @@ import com.gobang.model.Difficulty
 import kotlin.coroutines.startCoroutine
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class AiSearchEngineTest {
     @Test
@@ -39,6 +40,28 @@ class AiSearchEngineTest {
         val result = runSuspend { FallbackAiSearchEngine(primary, fallback).search(GobangBoard(), 1, AlphaZeroSearchConfig()) }
 
         assertEquals(expected, result)
+    }
+
+    @Test
+    fun alphaZeroEngineReusesSearcherForSameConfig() {
+        var predictions = 0
+        val predictor = object : com.gobang.engine.PolicyValuePredictor {
+            override val modelId = "test-model"
+
+            override fun predict(canonicalBoard: FloatArray): com.gobang.engine.PolicyValue {
+                predictions++
+                return com.gobang.engine.PolicyValue(FloatArray(225) { 1f }, 0f)
+            }
+        }
+        val engine = AlphaZeroAiSearchEngine(predictor)
+        val config = AlphaZeroSearchConfig(simulations = 0, maxNodes = 32, candidateLimit = 8)
+
+        val first = runSuspend { engine.search(GobangBoard(), 1, config) }
+        val second = runSuspend { engine.search(GobangBoard(), 1, config) }
+
+        assertTrue(first.row >= 0 && first.col >= 0)
+        assertEquals(first, second)
+        assertEquals(1, predictions)
     }
 }
 
