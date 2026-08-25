@@ -7,5 +7,8 @@ The release build may contain these generated assets:
 
 The manifest is validated against the model bytes before an ORT session is
 created. Do not commit a placeholder ONNX file or a manifest with a null hash.
-Until a real checkpoint is exported, `AndroidPolicyValuePredictor.load(...)`
-returns a failure and the composite engine must use the legacy searcher.
+The upstream Nagi-ovo `12.13best.pth.tar` checkpoint inspected during the
+MVP integration is 9x9 and cannot be exported into this app's fixed 15x15
+contract. Until a compatible 15x15 checkpoint is exported,
+`AndroidPolicyValuePredictor.load(...)` returns a failure and the composite
+engine must use the legacy searcher.

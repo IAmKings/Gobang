@@ -27,6 +27,7 @@ Required result fields:
 ```
 
 The current MVP has a deterministic 1,000-position legality regression in
-`AlphaZeroRandomPositionTest`. Android device latency and PyTorch → desktop
-ORT → Android ORT golden results remain deferred until a real checkpoint and
-an Android ARM64 device are available.
+`AlphaZeroRandomPositionTest`. An ARM64 device is available and the app has
+passed install/launch/gameplay smoke, but model parity and latency remain
+deferred: the inspected upstream Nagi-ovo checkpoint is 9x9 while this app's
+contract is fixed at 15x15.
