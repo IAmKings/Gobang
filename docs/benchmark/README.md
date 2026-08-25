@@ -34,3 +34,8 @@ upstream Nagi-ovo checkpoint is 9x9 while this app's contract is fixed at
 15x15. The smoke evidence is recorded in
 `device-PJZ110-bootstrap-model-smoke.json`; its generated model is not
 committed.
+
+The upstream self-play smoke is recorded in
+`selfplay-smoke-15x15.json`. It proves the 15x15 training loop can run on the
+M4 after the temporary NumPy compatibility patch, but it is not sufficient to
+produce a production-strength checkpoint.

@@ -46,4 +46,17 @@ used for strength claims. Use it only with the export and golden commands
 above to verify the 15x15 shapes and runtime wiring. Production quality still
 requires a separate self-play training run.
 
+## Upstream self-play smoke
+
+The upstream loop was also run from commit
+`11146dba12d7d5886cd3430567c71de9607297eb` in a temporary clone with one
+15x15 episode, four MCTS simulations, 32 channels, one training iteration,
+and one epoch. NumPy 2.x requires the compatibility change
+`board.tostring()` → `board.tobytes()` in that temporary clone. The loop
+completed and produced a 15x15 state dict; the resulting checkpoint exported
+and passed 13 desktop golden cases. Because one arena game is not enough to
+accept a new model, this remains a training smoke result, not a production
+checkpoint. Evidence is in
+`docs/benchmark/selfplay-smoke-15x15.json`.
+
 Artifacts are intentionally generated outside source control: `model.onnx`, `model_manifest.json`, and `golden.json`. The generated manifest records SHA-256 hashes for both the source checkpoint and ONNX file. `training/model_manifest.json` is only the unexported contract template and must not be shipped as a model manifest.

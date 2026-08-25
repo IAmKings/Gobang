@@ -1,0 +1,27 @@
+{
+  "source": "Nagi-ovo/alphazero-gomoku",
+  "source_commit": "11146dba12d7d5886cd3430567c71de9607297eb",
+  "compatibility_patch": "game.py board.tostring() -> board.tobytes() for NumPy 2.x",
+  "board_size": 15,
+  "num_channels": 32,
+  "mcts_simulations": 4,
+  "selfplay_episodes": 1,
+  "training_iterations": 1,
+  "training_epochs": 1,
+  "training_batches": 64,
+  "checkpoint": "temporary output-smoke-15/temp.pth.tar",
+  "checkpoint_sha256": "c8c8cf23a04e7823bb07fa18c4e60c073a65436715f31e002bedec68ab8fbbfa",
+  "state_dict_shapes": {
+    "fc1.weight": [1024, 3872],
+    "fc3.weight": [225, 512],
+    "fc4.weight": [1, 512]
+  },
+  "onnx_model_version": "nagi-selfplay-smoke-15x15-32ch",
+  "onnx_sha256": "caf153599ef692b123b3d138e1cf1e775008a92fb7ef21c1a861a7a9180dce71",
+  "golden_cases": 13,
+  "policy_max_abs_error": 2.32831e-09,
+  "value_max_abs_error": 1.04774e-08,
+  "arena_result": "new model rejected because one smoke game produced 0 wins and 0 losses",
+  "status": "smoke-pass-production-training-deferred",
+  "artifacts_committed": false
+}
