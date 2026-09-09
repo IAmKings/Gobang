@@ -10,7 +10,11 @@ data class SearchResult(val score: Int, val row: Int, val col: Int)
  */
 class GobangSearcher {
 
+    /** 威胁前置通道开关（默认开启）：根节点短路必胜/必堵/双杀构造/反杀预判着 */
+    var threatScanEnabled: Boolean = true
+
     val evaluator = GobangEvaluator()
+    private val threatScanner = ThreatScanner()
     private lateinit var board: IntArray
     private var bestMove: Pair<Int, Int>? = null
     private var maxDepth = 3
@@ -74,9 +78,17 @@ class GobangSearcher {
         return localAlpha
     }
 
-    /** 搜索入口：复制棋盘并开始 Negamax 搜索 */
+    /** 搜索入口：先跑威胁通道，再复制棋盘并开始 Negamax 搜索 */
     fun search(boardObj: GobangBoard, turn: Int, depth: Int): SearchResult {
-        this.board = boardObj.copyBoard()
+        val copy = boardObj.copyBoard()
+        if (threatScanEnabled) {
+            val threat = threatScanner.scan(copy, turn)
+            if (threat >= 0) {
+                val size = BoardConstants.BOARD_SIZE
+                return SearchResult(9999, threat / size, threat % size)
+            }
+        }
+        this.board = copy
         maxDepth = depth
         bestMove = null
         var score = searchInternal(turn, depth, -0x7fffffff, 0x7fffffff)
