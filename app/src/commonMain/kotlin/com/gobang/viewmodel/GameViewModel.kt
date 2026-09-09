@@ -11,10 +11,12 @@ import com.gobang.model.Move
 import com.gobang.storage.GameStateRepository
 import com.gobang.storage.SavedGame
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 
 /**
  * 游戏视图模型，管理游戏状态和 AI 逻辑。
@@ -34,6 +36,9 @@ class GameViewModel(
 
     private val board = GobangBoard()
 
+    /** 当前正在运行的 AI 搜索协程句柄（用于思考期间取消）；null 表示无进行中搜索 */
+    private var aiSearchJob: Job? = null
+
     private companion object {
         /** Hard：迭代加深最大层（Difficulty.Hard.depth=3 字段保持存档兼容，此处映射实际搜索上限） */
         const val AI_MAX_DEPTH_HARD = 6
@@ -44,6 +49,7 @@ class GameViewModel(
     /** 开始新游戏，可选指定开局 */
     fun newGame(mode: GameMode, difficulty: Difficulty, opening: Opening? = null) {
         board.reset()
+        cancelAiSearch()
         var initialBoard = IntArray(15 * 15)
         var initialHistory = emptyList<Move>()
         var initialTurn = 1
@@ -134,10 +140,26 @@ private fun triggerAiMove() {
     }
 
     /**
+     * 取消当前 AI 搜索（幂等）：供 undo/redo/newGame 在 AI 思考期间调用。
+     * 引擎单层搜索不协作中断——取消在下一次协程挂起点生效，
+     * 最坏等待当前层搜索结束（Hard 由 searchTimed 的时间预算约束上限）。
+     */
+    fun cancelAiSearch() {
+        aiSearchJob?.cancel()
+        aiSearchJob = null
+        if (_state.value.isAiThinking) {
+            _state.value = _state.value.copy(isAiThinking = false)
+        }
+    }
+
+    /**
  * 计算 AI 落子位置。使用 while 循环确保连续 AI 回合也能执行。
  * 每次搜索完成后落子，然后检查是否仍轮到 AI，如果是则继续搜索。
+ * 登记自身协程句柄以便 [cancelAiSearch] 中断；finally 保证状态复位。
  */
 suspend fun computeAiMove() {
+        aiSearchJob = coroutineContext[Job]
+        try {
         while (_state.value.isAiThinking) {
             val s = _state.value
             if (s.gameResult != null) {
@@ -169,12 +191,18 @@ suspend fun computeAiMove() {
 
             if (_state.value.gameResult != null || !shouldAiMove(_state.value)) break
         }
+        } finally {
+            aiSearchJob = null
+            if (_state.value.isAiThinking) {
+                _state.value = _state.value.copy(isAiThinking = false)
+            }
+        }
     }
 
-/** 撤销棋步，AI 模式下自动撤销两步（人+AI） */
+/** 撤销棋步，AI 模式下自动撤销两步（人+AI）。AI 思考期间先取消搜索再撤销 */
     fun undo() {
+        cancelAiSearch()
         val s = _state.value
-        if (s.isAiThinking) return
         if (s.gameResult != null) return
         if (s.moveHistory.isEmpty()) return
 
@@ -204,12 +232,14 @@ suspend fun computeAiMove() {
             gameResult = null,
             wonPositions = emptySet(),
         )
+        // 撤销后若仍轮到 AI（如 AIvAI 撤一步），恢复 AI 续走
+        if (shouldAiMove(_state.value)) triggerAiMove()
     }
 
-/** 重做被撤销的棋步 */
+/** 重做被撤销的棋步。AI 思考期间先取消搜索再重做 */
     fun redo() {
+        cancelAiSearch()
         val s = _state.value
-        if (s.isAiThinking) return
         if (s.undoStack.isEmpty()) return
         if (s.gameResult != null) return
 
@@ -236,6 +266,8 @@ suspend fun computeAiMove() {
             moveHistory = newHistory,
             undoStack = remainingUndo,
         )
+        // 重做后若轮到 AI（如 AIvAI），恢复 AI 续走
+        if (shouldAiMove(_state.value)) triggerAiMove()
     }
 
     /** 保存游戏到持久化存储 */

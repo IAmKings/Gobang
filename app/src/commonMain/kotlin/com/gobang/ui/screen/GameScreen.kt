@@ -90,10 +90,10 @@ fun GameScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                OutlinedButton(onClick = onUndo, enabled = state.moveHistory.isNotEmpty() && state.gameResult == null && !state.isAiThinking) {
+                OutlinedButton(onClick = onUndo, enabled = state.moveHistory.isNotEmpty() && state.gameResult == null) {
                     Text(LocaleManager.t("undo"))
                 }
-                OutlinedButton(onClick = onRedo, enabled = state.undoStack.isNotEmpty() && state.gameResult == null && !state.isAiThinking) {
+                OutlinedButton(onClick = onRedo, enabled = state.undoStack.isNotEmpty() && state.gameResult == null) {
                     Text(LocaleManager.t("redo"))
                 }
                 OutlinedButton(onClick = onNewGame) {
