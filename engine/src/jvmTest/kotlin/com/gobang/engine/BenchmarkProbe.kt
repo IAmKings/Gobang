@@ -11,9 +11,9 @@ import kotlin.test.Test
  *   JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
  *     ./gradlew :engine:jvmTest --tests "com.gobang.engine.BenchmarkProbe"
  *
- * 输出行格式：name(stones=..,turn=..) | d1=<ms>ms->(r,c) | d2=... | d3=... | timed8=<ms>ms->(r,c)
+ * 输出行格式：name(stones=..,turn=..) | d1=<ms>ms->(r,c) | d2=... | d3=... | t9..t12=<ms>ms（3000ms 预算）
  */
-@Ignore("Hard 参数已更新为 maxDepth=8/1000ms 并完成本地验证；复测时临时移除本注解")
+@Ignore("3000ms 深度探测已采集；复测时临时移除本注解")
 class BenchmarkProbe {
 
     @Test
@@ -29,11 +29,13 @@ class BenchmarkProbe {
                 val ms = (System.nanoTime() - t0) / 1_000_000
                 sb.append(" | d$d=${ms}ms->(${result.row},${result.col})")
             }
-            // Hard 语义：searchTimed(maxDepth=8, 1000ms) —— 若实测耗时 < 1000ms 说明完整完成 8 层
-            val t8 = System.nanoTime()
-            val r8 = searcher.searchTimed(board, pos.turn, 8, 1000L)
-            val ms8 = (System.nanoTime() - t8) / 1_000_000
-            sb.append(" | timed8=${ms8}ms->(${r8.row},${r8.col})")
+            // 预算 3000ms 下逐层探测：耗时 < 3000ms 即该层完整完成；≈3000ms 为被预算截断
+            for (d in 9..12) {
+                val t = System.nanoTime()
+                val r = searcher.searchTimed(board, pos.turn, d, 3000L)
+                val ms = (System.nanoTime() - t) / 1_000_000
+                sb.append(" | t$d=${ms}ms->(${r.row},${r.col})")
+            }
             println(sb.toString())
         }
     }

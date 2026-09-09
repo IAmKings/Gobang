@@ -40,10 +40,14 @@ class GameViewModel(
     private var aiSearchJob: Job? = null
 
     private companion object {
-        /** Hard：迭代加深最大层上限（Difficulty.Hard.depth=3 字段保持存档兼容；预算内尽力，超时回退最近完整层） */
-        const val AI_MAX_DEPTH_HARD = 8
-        /** Hard：单步时间预算（毫秒），P2 起可随平台/设置调优 */
-        const val AI_BUDGET_MS_HARD = 1000L
+        /** Hard：迭代加深最大层上限（Difficulty 字段保持存档兼容；预算内尽力，超时回退最近完整层） */
+        const val AI_MAX_DEPTH_HARD = 10
+        /** Hard：单步时间预算（毫秒） */
+        const val AI_BUDGET_MS_HARD = 2000L
+        /** Medium：迭代加深最大层上限 */
+        const val AI_MAX_DEPTH_MEDIUM = 6
+        /** Medium：单步时间预算（毫秒），明显强于固定 2 层、弱于 Hard */
+        const val AI_BUDGET_MS_MEDIUM = 600L
     }
 
     /** 开始新游戏，可选指定开局 */
@@ -178,6 +182,9 @@ suspend fun computeAiMove() {
                 when (s.difficulty) {
                     Difficulty.Hard -> searcher.searchTimed(
                         tempBoard, s.currentTurn, AI_MAX_DEPTH_HARD, AI_BUDGET_MS_HARD,
+                    )
+                    Difficulty.Medium -> searcher.searchTimed(
+                        tempBoard, s.currentTurn, AI_MAX_DEPTH_MEDIUM, AI_BUDGET_MS_MEDIUM,
                     )
                     else -> searcher.search(tempBoard, s.currentTurn, s.difficulty.depth)
                 }

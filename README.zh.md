@@ -8,7 +8,7 @@
 
 - **AI 引擎** — Negamax + Alpha-Beta 剪枝、压缩候选、威胁前置通道、迭代加深（时间预算）
 - **26 标准连珠开局** — 13 种直止打法 + 13 种斜止打法，每局前 3 步固定
-- **3 个难度等级** — 简单 / 中等 / 困难（困难：迭代加深 + 时间预算，上限 8 层）
+- **3 个难度等级** — 简单（固定 1 层）/ 中等（迭代加深上限 6 层）/ 困难（迭代加深上限 10 层）
 - **4 种游戏模式** — 人先手对战AI、AI先手对战人、双人对战、AI对战（观战）
 - **主题支持** — 浅色、深色、跟随系统
 - **双语界面** — 中文 / English
@@ -227,8 +227,9 @@ search(board, turn, depth)
             │   ├─ 检查游戏是否已结束
             │   ├─ 在 Dispatchers.Default 上执行搜索
             │   │   ├─ 从 UI state 重建临时 GobangBoard
-            │   │   ├─ 困难: searcher.searchTimed(board, turn, maxDepth=8, 1000ms)
-            │   │   │   简单/中等: searcher.search(board, turn, depth)（见上文）
+            │   │   ├─ 困难: searcher.searchTimed(board, turn, maxDepth=10, 2000ms)
+            │   │   │   中等: searcher.searchTimed(board, turn, maxDepth=6, 600ms)
+            │   │   │   简单: searcher.search(board, turn, depth=1)（见上文）
             │   │   └─ 返回 SearchResult(score, row, col)
             │   ├─ 落子到棋盘
             │   ├─ AI 思考中可悔棋/重开：cancelAiSearch() 取消当前搜索
@@ -241,9 +242,9 @@ search(board, turn, depth)
 
 | 难度 | 搜索 | 特点 |
 |------|------|------|
-| 简单 | 固定 1 层 | 仅看一步，随机性强 |
-| 中等 | 固定 2 层 | 看两步，有一定策略 |
-| 困难 | 迭代加深 2–8 层 + 1000ms 时间预算 | 预算内尽力（实测多数局面 <1s 完成 8 层），时间到回退最近完整层，较强
+| 简单 | 固定 1 层 | 仅看一步，随机性强，适合新手 |
+| 中等 | 迭代加深 2–6 层 + 600ms 预算 | 有一定策略，等待轻（≤0.6s） |
+| 困难 | 迭代加深 2–10 层 + 2000ms 预算 | 轻中局可算到 ~10 层、复杂局 ~9 层，较强 |
 
 ## 开源协议
 

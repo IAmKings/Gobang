@@ -8,7 +8,7 @@ A cross-platform Gomoku (Five in a Row) game with AI, built with Kotlin Multipla
 
 - **AI Engine** — Negamax + Alpha-Beta, compressed candidates, threat pre-pass, iterative deepening (time budget)
 - **26 Standard Renju Openings** — 13 direct + 13 indirect openings with 3-move sequences
-- **3 Difficulty Levels** — Easy / Medium / Hard (Hard: iterative deepening up to depth 8 with time budget)
+- **3 Difficulty Levels** — Easy (fixed 1 layer) / Medium (iterative deepening up to 6) / Hard (iterative deepening up to 10)
 - **4 Game Modes** — PvAI, AIvP, PvP, AIvAI (spectate)
 - **Theme Support** — Light, Dark, System (auto-detect)
 - **Bilingual UI** — Chinese / English
@@ -228,8 +228,9 @@ User places stone → ViewModel.handleUserMove()
             │   ├─ Check if game has ended
             │   ├─ Run search on Dispatchers.Default
             │   │   ├─ Rebuild temporary GobangBoard from UI state
-            │   │   ├─ Hard: searcher.searchTimed(board, turn, maxDepth=8, 1000ms)
-            │   │   │   Easy/Medium: searcher.search(board, turn, depth) (see above)
+            │   │   ├─ Hard: searcher.searchTimed(board, turn, maxDepth=10, 2000ms)
+            │   │   │   Medium: searcher.searchTimed(board, turn, maxDepth=6, 600ms)
+            │   │   │   Easy: searcher.search(board, turn, depth=1) (see above)
             │   │   └─ Return SearchResult(score, row, col)
             │   ├─ Apply move to board
             │   ├─ AI thinking can be interrupted by undo/restart via cancelAiSearch()
@@ -243,8 +244,8 @@ User places stone → ViewModel.handleUserMove()
 | Difficulty | Search | Description |
 |------------|--------|-------------|
 | Easy | Fixed 1 layer | Looks one move ahead, high randomness |
-| Medium | Fixed 2 layers | Looks two moves ahead, moderate strategy |
-| Hard | Iterative deepening 2–8 + 1000ms budget | Searches as deep as the budget allows (8 layers usually complete <1s), falls back to last completed layer on timeout |
+| Medium | Iterative deepening 2–6 + 600ms budget | Moderate strategy with light waits (≤0.6s) |
+| Hard | Iterative deepening 2–10 + 2000ms budget | ~10 layers in light/mid positions, ~9 in complex ones |
 
 ## License
 
