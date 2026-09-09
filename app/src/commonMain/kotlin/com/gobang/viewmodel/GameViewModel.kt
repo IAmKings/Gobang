@@ -34,6 +34,13 @@ class GameViewModel(
 
     private val board = GobangBoard()
 
+    private companion object {
+        /** Hard：迭代加深最大层（Difficulty.Hard.depth=3 字段保持存档兼容，此处映射实际搜索上限） */
+        const val AI_MAX_DEPTH_HARD = 6
+        /** Hard：单步时间预算（毫秒），P2 起可随平台/设置调优 */
+        const val AI_BUDGET_MS_HARD = 1000L
+    }
+
     /** 开始新游戏，可选指定开局 */
     fun newGame(mode: GameMode, difficulty: Difficulty, opening: Opening? = null) {
         board.reset()
@@ -146,8 +153,12 @@ suspend fun computeAiMove() {
                         tempBoard.put(i / 15, i % 15, s.board[i])
                     }
                 }
-                val depth = s.difficulty.depth
-                searcher.search(tempBoard, s.currentTurn, depth)
+                when (s.difficulty) {
+                    Difficulty.Hard -> searcher.searchTimed(
+                        tempBoard, s.currentTurn, AI_MAX_DEPTH_HARD, AI_BUDGET_MS_HARD,
+                    )
+                    else -> searcher.search(tempBoard, s.currentTurn, s.difficulty.depth)
+                }
             }
 
             _state.value = _state.value.copy(isAiThinking = false)

@@ -11,9 +11,9 @@ import kotlin.test.Test
  *   JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \
  *     ./gradlew :engine:jvmTest --tests "com.gobang.engine.BenchmarkProbe"
  *
- * 输出行格式：name(stones=..,turn=..) | d1=<ms>ms->(r,c) | d2=... | d3=...
+ * 输出行格式：name(stones=..,turn=..) | d1=<ms>ms->(r,c) | d2=... | d3=... | timed6=<ms>ms->(r,c)
  */
-@Ignore("S0 基线已采集；验收复测时临时启用")
+@Ignore("验收数据已采集（P0）；后续阶段复测时临时移除本注解")
 class BenchmarkProbe {
 
     @Test
@@ -29,6 +29,11 @@ class BenchmarkProbe {
                 val ms = (System.nanoTime() - t0) / 1_000_000
                 sb.append(" | d$d=${ms}ms->(${result.row},${result.col})")
             }
+            // Hard 语义：searchTimed(maxDepth=6, 1000ms) —— 若实测耗时 < 1000ms 说明完整完成 6 层
+            val t6 = System.nanoTime()
+            val r6 = searcher.searchTimed(board, pos.turn, 6, 1000L)
+            val ms6 = (System.nanoTime() - t6) / 1_000_000
+            sb.append(" | timed6=${ms6}ms->(${r6.row},${r6.col})")
             println(sb.toString())
         }
     }
