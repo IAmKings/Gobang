@@ -17,6 +17,14 @@ def sample_config() -> dict:
             "epochs": 5, "batch_size": 128, "num_iterations": 5, "num_episodes": 20,
             "max_queue_length": 50000, "num_iters_history": 5, "update_threshold": 0.55,
             "arena_compare": 20, "temp_threshold": 15, "num_sims": 128,
+        }, "production-preflight": {
+            "epochs": 10, "batch_size": 256, "num_iterations": 1, "num_episodes": 20,
+            "max_queue_length": 200000, "num_iters_history": 20, "update_threshold": 0.55,
+            "arena_compare": 20, "temp_threshold": 15, "num_sims": 800,
+        }, "quality-preflight": {
+            "epochs": 5, "batch_size": 256, "num_iterations": 3, "num_episodes": 50,
+            "max_queue_length": 200000, "num_iters_history": 20, "update_threshold": 0.55,
+            "arena_compare": 40, "temp_threshold": 15, "num_sims": 800,
         }},
     }
 
@@ -41,6 +49,31 @@ class ServerBaselineTest(unittest.TestCase):
             (source_dir / "alphazero.py").touch()
             command = command_for(source_dir, Path("/tmp/pilot.yaml"), "/usr/bin/python3")
         self.assertEqual(command[-3:], ["--train", "--config", "/tmp/pilot.yaml"])
+
+    def test_builds_warm_start_config_for_production_preflight(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint = root / "pilot" / "best.pth.tar"
+            checkpoint.parent.mkdir()
+            checkpoint.write_bytes(b"checkpoint")
+            result = build_upstream_config(
+                sample_config(),
+                "production-preflight",
+                root / "preflight",
+                resume_from=checkpoint,
+            )
+        self.assertEqual(result["training"]["batch_size"], 256)
+        self.assertEqual(result["mcts"]["num_sims"], 800)
+        self.assertTrue(result["system"]["load_model"])
+        self.assertEqual(result["system"]["load_folder_file"], [str(checkpoint.parent), checkpoint.name])
+
+    def test_builds_quality_preflight_config(self) -> None:
+        result = build_upstream_config(sample_config(), "quality-preflight", Path("/tmp/quality"))
+        self.assertEqual(result["training"]["num_iterations"], 3)
+        self.assertEqual(result["training"]["num_episodes"], 50)
+        self.assertEqual(result["training"]["epochs"], 5)
+        self.assertEqual(result["training"]["arena_compare"], 40)
+        self.assertEqual(result["mcts"]["num_sims"], 800)
 
     @patch("training.launch_server_baseline.subprocess.run")
     def test_source_commit_is_verified(self, run) -> None:

@@ -80,6 +80,114 @@ python3 training/launch_server_baseline.py \
 
 The command is dry-run by default and prints the generated upstream config
 and exact training command. Add `--run` only on the intended server. Profiles
-are `smoke`, `pilot`, and `production`; generated configs and checkpoints are
-never written to Git. The server dependency file pins `numpy<2` because the
-upstream source calls the removed `ndarray.tostring()` API.
+are `smoke`, `pilot`, `production-preflight`, `quality-preflight`, and
+`production`; generated configs and checkpoints are never written to Git. The
+`production-preflight` profile validates the production compute shape for one
+iteration. The `quality-preflight` profile uses three iterations, 50 games per
+iteration, 40 arena games, 800 simulations, and five epochs to reduce the
+chance that a small-sample overfit is promoted. The server dependency file
+pins `numpy<2` because the upstream source calls the removed
+`ndarray.tostring()` API.
+
+## Statistical promotion evaluation
+
+`evaluate_arena.py` compares two existing checkpoints without training or
+changing either one. It requires an even game count because the upstream Arena
+plays half the games with each model going first. A candidate passes only when
+its decisive-game win rate is at least 55% and the lower endpoint of its 95%
+Wilson interval is above 50%.
+
+```bash
+python3 training/evaluate_arena.py \
+  --source-dir /opt/alphazero-gomoku \
+  --source-commit 11146dba12d7d5886cd3430567c71de9607297eb \
+  --config /mnt/checkpoints/gomoku-quality-preflight/upstream-quality-preflight.yaml \
+  --candidate /mnt/checkpoints/gomoku-quality-preflight/best.pth.tar \
+  --baseline /mnt/checkpoints/gomoku-pilot/best.pth.tar \
+  --output /mnt/checkpoints/gomoku-quality-preflight/promotion-eval.json \
+  --games 200 \
+  --simulations 800
+```
+
+Use `--dry-run` first. The evidence output path must not already exist.
+
+### Resumable local precheck
+
+For a local, non-CUDA strength precheck, add `--resume-state` and
+`--local-precheck`. The evaluator atomically updates the state JSON after each
+completed game. Re-run the identical command after an interruption; it verifies
+the pinned source, configuration, model hashes, score totals, and NumPy random
+state before continuing from the next game. This mode starts every game with a
+fresh MCTS tree so a restored process has the same per-game boundary as an
+uninterrupted resumable run.
+
+```bash
+python3 training/evaluate_arena.py \
+  --source-dir /path/to/alphazero-gomoku \
+  --source-commit 11146dba12d7d5886cd3430567c71de9607297eb \
+  --config /path/to/local-cpu.yaml \
+  --candidate /path/to/quality-best.pth.tar \
+  --baseline /path/to/pilot-best.pth.tar \
+  --output /path/to/local-precheck-evidence.json \
+  --resume-state /path/to/local-precheck-state.json \
+  --local-precheck \
+  --games 200 \
+  --simulations 800
+```
+
+Local-precheck evidence is explicitly marked non-authoritative; it can block a
+weak candidate early but cannot replace the CUDA promotion evaluation.
+
+## Resumable local production training (M4 / MPS)
+
+`resumable_local_train.py` is the local-only, interruption-safe adapter for
+the existing 15x15 / 64-channel `production` profile. It retains the full
+100 iterations × 100 self-play games × 800 MCTS simulations × 10 epochs × 40
+Arena games budget. It does not modify the input quality checkpoint and its
+output remains non-authoritative for the CUDA production gate.
+
+Start it from the native macOS Terminal where MPS was verified (not from the
+Codex-managed terminal). The runner prints JSON events immediately, including
+the actual device (`mps` or `cpu`), per-game self-play progress, batch progress,
+and the elapsed seconds for every epoch. It atomically persists each completed
+self-play game, epoch, Arena game, and candidate-acceptance transaction.
+Training optimizer states are named per iteration (`training-state-001.pth.tar`,
+`training-state-002.pth.tar`, …), so a completed iteration can never block the
+next one from training.
+
+```bash
+cd /Users/pauldeman/Documents/ai_workspace/gobang
+
+# Use the same Python where `torch.backends.mps.is_available()` is true.
+python3 -m pip install -r training/server-requirements.txt
+SDL_VIDEODRIVER=dummy PYTHONUNBUFFERED=1 python3 training/resumable_local_train.py \
+  --source-dir training/artifacts/promotion-gate/upstream \
+  --input-checkpoint training/artifacts/promotion-gate/quality-best.pth.tar \
+  --run-root training/artifacts/local-production-mps \
+  --profile production \
+  --device auto
+```
+
+On an M4 native Terminal, the initial event must contain `"device": "mps"`.
+If it contains `"device": "cpu"`, stop before committing significant time and
+check that the same `python3` reports `mps:0`. A normal shutdown or power loss
+is resumed with the **identical** command; do not delete the run root.
+
+Query the current durable progress and latest accepted/rejected result without
+starting training:
+
+```bash
+python3 training/resumable_local_train.py \
+  --source-dir training/artifacts/promotion-gate/upstream \
+  --input-checkpoint training/artifacts/promotion-gate/quality-best.pth.tar \
+  --run-root training/artifacts/local-production-mps \
+  --profile production \
+  --status
+```
+
+The status output reports phase, completed self-play games, completed epochs,
+completed Arena games, actual last-used device, and the latest iteration
+result. Current verification evidence is a CPU `smoke` run only (one game,
+four simulations, one epoch): it completed its recovery path and is not a
+strength result. The previously completed 200-game local precheck remains
+129:71 (64.5%) for the quality checkpoint versus pilot, also non-authoritative.

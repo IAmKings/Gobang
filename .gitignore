@@ -44,6 +44,9 @@ kotlin-js-store/package.json
 out/
 *.log
 
+# Local-only training artifacts (checkpoints, generated configurations, Arena evidence)
+training/artifacts/
+
 # Keystore (never commit signing keys)
 *.jks
 *.keystore

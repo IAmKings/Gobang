@@ -44,3 +44,9 @@ The reproducible 64-channel server baseline smoke is recorded in
 `server-baseline-smoke-15x15.json`. It validates the checked-in launcher,
 checkpoint shape, and ONNX export path; the generated model remains outside
 source control.
+
+The remote 64-channel pilot checkpoint was exported and tested on the PJZ110
+ARM64 device. Desktop ONNX validation covered 13 golden cases, and the device
+completed two human-vs-AI moves with the pilot model. Evidence is recorded in
+`device-PJZ110-pilot-model-smoke.json`; latency and long-run soak remain
+separate gates.

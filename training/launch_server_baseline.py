@@ -12,7 +12,13 @@ from pathlib import Path
 from typing import Any
 
 REQUIRED_BASELINE = {"board_size": 15, "num_channels": 64}
-PROFILE_NAMES = ("smoke", "pilot", "production")
+PROFILE_NAMES = (
+    "smoke",
+    "pilot",
+    "production-preflight",
+    "quality-preflight",
+    "production",
+)
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -54,10 +60,25 @@ def validate_config(config: dict[str, Any], profile: str) -> None:
             raise ValueError(f"profiles.{profile}.{key} must be a positive integer")
 
 
-def build_upstream_config(config: dict[str, Any], profile: str, checkpoint_dir: Path) -> dict[str, Any]:
+def build_upstream_config(
+    config: dict[str, Any],
+    profile: str,
+    checkpoint_dir: Path,
+    resume_from: Path | None = None,
+) -> dict[str, Any]:
     validate_config(config, profile)
     baseline = config["baseline"]
     settings = config["profiles"][profile]
+    system = {
+        "cuda": True,
+        "checkpoint_dir": str(checkpoint_dir),
+        "load_model": resume_from is not None,
+        "load_folder_file": [str(checkpoint_dir), "best.pth.tar"],
+    }
+    if resume_from is not None:
+        if not resume_from.is_file():
+            raise FileNotFoundError(f"resume checkpoint not found: {resume_from}")
+        system["load_folder_file"] = [str(resume_from.parent), resume_from.name]
     return {
         "training": {
             "epochs": settings["epochs"], "batch_size": settings["batch_size"],
@@ -74,10 +95,7 @@ def build_upstream_config(config: dict[str, Any], profile: str, checkpoint_dir: 
         },
         "mcts": {"num_sims": settings["num_sims"], "cpuct": baseline["cpuct"]},
         "game": {"board_size": baseline["board_size"]},
-        "system": {
-            "cuda": True, "checkpoint_dir": str(checkpoint_dir), "load_model": False,
-            "load_folder_file": [str(checkpoint_dir), "best.pth.tar"],
-        },
+        "system": system,
     }
 
 
@@ -109,6 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--source-dir", type=Path, required=True)
     parser.add_argument("--checkpoint-dir", type=Path, required=True)
     parser.add_argument("--generated-config", type=Path)
+    parser.add_argument("--resume-from", type=Path, help="warm-start from an existing checkpoint")
     parser.add_argument("--python", default=sys.executable, dest="python_executable")
     parser.add_argument("--run", action="store_true", help="execute training; default only prints the command")
     args = parser.parse_args(argv)
@@ -116,7 +135,12 @@ def main(argv: list[str] | None = None) -> int:
         config = load_yaml(args.config)
         verify_source_commit(args.source_dir, config["source"]["commit"])
         generated_path = args.generated_config or args.checkpoint_dir / f"upstream-{args.profile}.yaml"
-        upstream_config = build_upstream_config(config, args.profile, args.checkpoint_dir)
+        upstream_config = build_upstream_config(
+            config,
+            args.profile,
+            args.checkpoint_dir,
+            resume_from=args.resume_from,
+        )
         generated_path.parent.mkdir(parents=True, exist_ok=True)
         import yaml
         generated_path.write_text(yaml.safe_dump(upstream_config, sort_keys=False), encoding="utf-8")
