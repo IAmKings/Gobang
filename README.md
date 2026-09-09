@@ -6,9 +6,9 @@ A cross-platform Gomoku (Five in a Row) game with AI, built with Kotlin Multipla
 
 ## Features
 
-- **AI Engine** — Negamax + Alpha-Beta pruning
+- **AI Engine** — Negamax + Alpha-Beta, compressed candidates, threat pre-pass, iterative deepening (time budget)
 - **26 Standard Renju Openings** — 13 direct + 13 indirect openings with 3-move sequences
-- **3 Difficulty Levels** — Easy / Medium / Hard (search depth 1–3)
+- **3 Difficulty Levels** — Easy / Medium / Hard (Hard: iterative deepening up to depth 6 with time budget)
 - **4 Game Modes** — PvAI, AIvP, PvP, AIvAI (spectate)
 - **Theme Support** — Light, Dark, System (auto-detect)
 - **Bilingual UI** — Chinese / English
@@ -131,9 +131,12 @@ search(board, turn, depth)
 
 **Key features:**
 - **Negamax framework**: Opponent's best choice equals negating own score, simplifying search logic
-- **Alpha-Beta pruning**: β-pruning skips branches that cannot be better, reducing search space by ~√N on average
+- **Compressed candidates (move ordering)**: each level expands only empty cells within distance ≤2 of a stone, ranked by attack/defense heuristics and capped at top-K (16 root / 12 inner), cutting the branching factor from 225 to ~12–16
+- **Threat pre-pass**: before root search, short-circuits in priority order — ① win in one move ② must-block opponent's one-move win ③ build a double threat (double open-three / four-three) ④ occupy opponent's double-threat point
+- **Iterative deepening + time budget (Hard)**: `searchTimed` deepens 2→6 layers and falls back to the last fully completed layer when the budget runs out
+- **Lightweight inner-node termination**: a local five-in-a-row check after each move ends terminal branches; no full-board evaluation at inner nodes (evaluation runs only at leaves)
 - **High-score confirmation**: When search score > 8000, re-search at depth=1 to precisely confirm winning/losing moves
-- **Best move recorded at root only**: `bestMove` is updated only when `depth == maxDepth`
+- **Best move recorded at root only**: `bestMove` is updated at the root level only
 
 ### Position Evaluator
 
@@ -225,10 +228,11 @@ User places stone → ViewModel.handleUserMove()
             │   ├─ Check if game has ended
             │   ├─ Run search on Dispatchers.Default
             │   │   ├─ Rebuild temporary GobangBoard from UI state
-            │   │   ├─ searcher.search(board, turn, depth)
-            │   │   │   └─ Negamax + Alpha-Beta (see above)
+            │   │   ├─ Hard: searcher.searchTimed(board, turn, maxDepth=6, 1000ms)
+            │   │   │   Easy/Medium: searcher.search(board, turn, depth) (see above)
             │   │   └─ Return SearchResult(score, row, col)
             │   ├─ Apply move to board
+            │   ├─ AI thinking can be interrupted by undo/restart via cancelAiSearch()
             │   └─ If still AI's turn → continue loop
             │
             └─ PvP mode: AI not triggered
@@ -236,11 +240,11 @@ User places stone → ViewModel.handleUserMove()
 
 **Difficulty and search depth:**
 
-| Difficulty | Search Depth | Description |
-|------------|--------------|-------------|
-| Easy | 1 | Looks one move ahead, high randomness |
-| Medium | 2 | Looks two moves ahead, moderate strategy |
-| Hard | 3 | Looks three moves ahead, stronger but slower |
+| Difficulty | Search | Description |
+|------------|--------|-------------|
+| Easy | Fixed 1 layer | Looks one move ahead, high randomness |
+| Medium | Fixed 2 layers | Looks two moves ahead, moderate strategy |
+| Hard | Iterative deepening 2–6 + 1000ms budget | Up to six moves ahead, falls back to last completed layer on timeout |
 
 ## License
 
