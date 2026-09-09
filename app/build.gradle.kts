@@ -56,7 +56,8 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "1.0.0"
+        // 支持 CI/发布时以 -PversionName=<tag> 覆盖（默认 1.0.0）
+        versionName = (project.findProperty("versionName") as String?) ?: "1.0.0"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
