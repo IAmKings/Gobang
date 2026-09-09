@@ -24,6 +24,7 @@ build/
 local.properties
 *.class
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.apk
 *.kotlin_module
 .kotlin/
