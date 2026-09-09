@@ -13,7 +13,7 @@ import kotlin.test.Test
  *
  * 输出行格式：name(stones=..,turn=..) | d1=<ms>ms->(r,c) | d2=... | d3=... | timed6=<ms>ms->(r,c)
  */
-@Ignore("验收数据已采集（P0）；后续阶段复测时临时移除本注解")
+@Ignore("P1 复测数据已采集；后续阶段复测时临时移除本注解")
 class BenchmarkProbe {
 
     @Test
