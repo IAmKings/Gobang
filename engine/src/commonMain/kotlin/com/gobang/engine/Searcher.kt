@@ -1,12 +1,17 @@
 package com.gobang.engine
 
+import kotlin.time.TimeSource
+
 /** AI 搜索结果：评分、行、列 */
 data class SearchResult(val score: Int, val row: Int, val col: Int)
 
 /**
- * 五子棋搜索器，使用 Negamax + Alpha-Beta 剪枝算法。
- * 基于位置权重生成候选着法，按优先级排序后搜索。
- * 对高分/低分局面会重新以深度 1 搜索以精确确认。
+ * 五子棋搜索器：Negamax + Alpha-Beta 剪枝 + 压缩候选 + 威胁前置通道。
+ *
+ * - [search]：固定深度搜索（Easy/Medium 与既有调用方使用），根层候选 top-K。
+ * - [searchTimed]：迭代加深 + 时间预算（Hard 使用），层未完成即回退最近完整层。
+ * - 递归不再保存实例棋盘状态（boardArr 传参、落子/回溯原位修改），内部节点不再整盘预评估，
+ *   落子后以局部五连检测短路终局分支；叶节点才调用评估器。
  */
 class GobangSearcher {
 
@@ -15,89 +20,167 @@ class GobangSearcher {
 
     val evaluator = GobangEvaluator()
     private val threatScanner = ThreatScanner()
-    private lateinit var board: IntArray
-    private var bestMove: Pair<Int, Int>? = null
-    private var maxDepth = 3
+    private val candidateGen = CandidateGenerator()
 
-    /** 生成所有空位作为候选着法，按位置权重从高到低排序 */
-    private fun genmove(turn: Int): List<Triple<Int, Int, Int>> {
-        val SIZE = BoardConstants.BOARD_SIZE
-        val moves = mutableListOf<Triple<Int, Int, Int>>()
-        for (i in 0 until SIZE) {
-            for (j in 0 until SIZE) {
-                if (board[i * SIZE + j] == 0) {
-                    val score = evaluator.POS[i][j]
-                    moves.add(Triple(score, i, j))
-                }
-            }
+    companion object {
+        private const val WIN_SCORE = 9999
+        private const val INF = 0x7fffffff
+
+        /** 默认单调时钟（毫秒）。测试可注入假时钟。 */
+        val defaultClock: () -> Long = {
+            TimeSource.Monotonic.markNow().elapsedNow().inWholeMilliseconds
         }
-        moves.sortByDescending { it.first }
-        return moves
+
+        private fun other(turn: Int): Int = if (turn == BoardConstants.BLACK) BoardConstants.WHITE else BoardConstants.BLACK
     }
 
-    /** Negamax + Alpha-Beta 剪枝递归搜索 */
-    private fun searchInternal(turn: Int, depth: Int, alpha: Int, beta: Int): Int {
-        // 叶节点：评估当前局面
-        if (depth <= 0) {
-            evaluator.reset()
-            return evaluator.evaluateFromBoard(board, turn)
-        }
-
-        // 当前局面评估，若已经必胜/必败则提前返回
-        evaluator.reset()
-        var score = evaluator.evaluateFromBoard(board, turn)
-        if (kotlin.math.abs(score) >= 9999 && depth < maxDepth) {
-            return score
-        }
-
-        val moves = genmove(turn)
-        var localAlpha = alpha
-        var localBestMove: Pair<Int, Int>? = null
-
-        for ((_, row, col) in moves) {
-            val SIZE = BoardConstants.BOARD_SIZE
-            board[row * SIZE + col] = turn
-            val nturn = if (turn == 1) 2 else 1
-            score = -searchInternal(nturn, depth - 1, -beta, -localAlpha)
-            board[row * SIZE + col] = 0
-
-            if (score > localAlpha) {
-                localAlpha = score
-                localBestMove = row to col
-                if (localAlpha >= beta) {
-                    break  // Beta 剪枝
-                }
-            }
-        }
-
-        // 仅在根节点记录最佳着法
-        if (depth == maxDepth && localBestMove != null) {
-            bestMove = localBestMove
-        }
-
-        return localAlpha
-    }
-
-    /** 搜索入口：先跑威胁通道，再复制棋盘并开始 Negamax 搜索 */
+    /**
+     * 固定深度搜索。先跑威胁通道；高分局面（>8000）以深度 1 重新确认最佳点（与旧行为一致）。
+     */
     fun search(boardObj: GobangBoard, turn: Int, depth: Int): SearchResult {
+        val size = BoardConstants.BOARD_SIZE
         val copy = boardObj.copyBoard()
         if (threatScanEnabled) {
             val threat = threatScanner.scan(copy, turn)
-            if (threat >= 0) {
-                val size = BoardConstants.BOARD_SIZE
-                return SearchResult(9999, threat / size, threat % size)
+            if (threat >= 0) return SearchResult(WIN_SCORE, threat / size, threat % size)
+        }
+        if (depth <= 0) return SearchResult(0, -1, -1)
+
+        var score: Int
+        var bestIdx: Int
+        val first = rootSearch(copy, turn, depth)
+        score = first.first
+        bestIdx = first.second
+        // 高分局面重新以深度 1 搜索，精确确认最佳着法
+        if (kotlin.math.abs(score) > 8000) {
+            val confirm = rootSearch(copy, turn, 1)
+            if (confirm.second >= 0) {
+                score = confirm.first
+                bestIdx = confirm.second
             }
         }
-        this.board = copy
-        maxDepth = depth
-        bestMove = null
-        var score = searchInternal(turn, depth, -0x7fffffff, 0x7fffffff)
-        // 高分局面重新以深度 1 搜索，精确确认结果
-        if (kotlin.math.abs(score) > 8000) {
-            maxDepth = depth
-            score = searchInternal(turn, 1, -0x7fffffff, 0x7fffffff)
+        if (bestIdx < 0) return SearchResult(score, -1, -1)
+        return SearchResult(score, bestIdx / size, bestIdx % size)
+    }
+
+    /**
+     * 迭代加深 + 时间预算搜索（Hard）。
+     * 根候选一次生成并逐层按上一轮得分重排（move ordering）；
+     * 层遍历中发现超时即丢弃该层、回退最近完整层结果；
+     * 若连第一层都未完成，回退启发式首候选。
+     *
+     * @param budgetMs 时间预算（毫秒）；@param clock 当前时间（毫秒），可注入假时钟做确定性测试。
+     */
+    fun searchTimed(
+        boardObj: GobangBoard,
+        turn: Int,
+        maxDepth: Int,
+        budgetMs: Long,
+        clock: () -> Long = defaultClock,
+    ): SearchResult {
+        val size = BoardConstants.BOARD_SIZE
+        val copy = boardObj.copyBoard()
+        if (threatScanEnabled) {
+            val threat = threatScanner.scan(copy, turn)
+            if (threat >= 0) return SearchResult(WIN_SCORE, threat / size, threat % size)
         }
-        val move = bestMove ?: return SearchResult(score, -1, -1)
-        return SearchResult(score, move.first, move.second)
+
+        var moves = candidateGen.generate(copy, turn, CandidateGenerator.TOP_K_ROOT).toIntArray()
+        if (moves.isEmpty()) return SearchResult(0, -1, -1)
+
+        val deadline = clock() + budgetMs
+        val perMove = IntArray(moves.size)
+        var bestScore = 0
+        var bestIdx = moves[0]
+        var anyCompleted = false
+
+        for (d in 2..maxDepth.coerceAtLeast(2)) {
+            if (clock() > deadline) break
+            var alpha = -INF
+            var dBestIdx = -1
+            var aborted = false
+            for (i in moves.indices) {
+                if (clock() > deadline) {
+                    aborted = true
+                    break
+                }
+                val idx = moves[i]
+                copy[idx] = turn
+                val s = if (LineCheck.hasFiveAt(copy, idx, turn)) {
+                    WIN_SCORE
+                } else {
+                    -negamax(copy, other(turn), d - 1, -INF, -alpha)
+                }
+                copy[idx] = 0
+                perMove[i] = s
+                if (s > alpha) {
+                    alpha = s
+                    dBestIdx = idx
+                }
+            }
+            if (aborted) break
+            anyCompleted = true
+            bestScore = alpha
+            bestIdx = dBestIdx
+            // 按本层得分降序重排候选（下一层优先搜最佳分支）
+            moves = moves.indices.sortedByDescending { perMove[it] }.map { moves[it] }.toIntArray()
+        }
+
+        if (bestIdx < 0) {
+            // 无完整层（理论：满盘）——与固定深度搜索的空候选语义一致
+            if (!anyCompleted) return SearchResult(bestScore, -1, -1)
+            return SearchResult(bestScore, -1, -1)
+        }
+        return SearchResult(bestScore, bestIdx / size, bestIdx % size)
+    }
+
+    /** 根层展开：对所有根候选落子并取最大得分，返回 (score, 最佳点索引) */
+    private fun rootSearch(boardArr: IntArray, turn: Int, depth: Int): Pair<Int, Int> {
+        val moves = candidateGen.generate(boardArr, turn, CandidateGenerator.TOP_K_ROOT)
+        var alpha = -INF
+        var bestIdx = -1
+        for (idx in moves) {
+            boardArr[idx] = turn
+            val s = if (LineCheck.hasFiveAt(boardArr, idx, turn)) {
+                WIN_SCORE
+            } else {
+                -negamax(boardArr, other(turn), depth - 1, -INF, -alpha)
+            }
+            boardArr[idx] = 0
+            if (s > alpha) {
+                alpha = s
+                bestIdx = idx
+            }
+        }
+        return alpha to bestIdx
+    }
+
+    /**
+     * Negamax + Alpha-Beta 递归。boardArr 原位落子/回溯。
+     * depth<=0 为叶节点（整盘评估）；内部节点不再整盘预评估，
+     * 落子形成五连时以局部检测短路返回 WIN_SCORE。
+     */
+    private fun negamax(boardArr: IntArray, turn: Int, depth: Int, alpha: Int, beta: Int): Int {
+        if (depth <= 0) {
+            evaluator.reset()
+            return evaluator.evaluateFromBoard(boardArr, turn)
+        }
+        val moves = candidateGen.generate(boardArr, turn, CandidateGenerator.TOP_K_INNER)
+        if (moves.isEmpty()) return 0
+        var a = alpha
+        for (idx in moves) {
+            boardArr[idx] = turn
+            val s = if (LineCheck.hasFiveAt(boardArr, idx, turn)) {
+                WIN_SCORE
+            } else {
+                -negamax(boardArr, other(turn), depth - 1, -beta, -a)
+            }
+            boardArr[idx] = 0
+            if (s > a) {
+                a = s
+                if (a >= beta) break
+            }
+        }
+        return a
     }
 }
