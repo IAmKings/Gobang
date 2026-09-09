@@ -40,8 +40,8 @@ class GameViewModel(
     private var aiSearchJob: Job? = null
 
     private companion object {
-        /** Hard：迭代加深最大层（Difficulty.Hard.depth=3 字段保持存档兼容，此处映射实际搜索上限） */
-        const val AI_MAX_DEPTH_HARD = 6
+        /** Hard：迭代加深最大层上限（Difficulty.Hard.depth=3 字段保持存档兼容；预算内尽力，超时回退最近完整层） */
+        const val AI_MAX_DEPTH_HARD = 8
         /** Hard：单步时间预算（毫秒），P2 起可随平台/设置调优 */
         const val AI_BUDGET_MS_HARD = 1000L
     }
