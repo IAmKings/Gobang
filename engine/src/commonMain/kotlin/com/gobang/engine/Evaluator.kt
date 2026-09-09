@@ -32,6 +32,10 @@ class GobangEvaluator {
 
         const val BLACK = 1
         const val WHITE = 2
+
+        // record 世代计数参数：raw 值占低 8 位；generation 上限保证 (gen<<8) 不溢出 Int
+        private const val GENERATION_SHIFT = 8
+        private const val MAX_GENERATION = 1 shl 22
     }
 
     // 临时数组和记录矩阵（避免重复分配）
@@ -45,14 +49,33 @@ class GobangEvaluator {
     // count[stone][type] 统计各方各棋型数量
     private val count = Array(3) { IntArray(20) }
 
-    /** 重置所有记录和计数 */
+    // record 世代计数：避免每次评估对 record O(225×4) 全量清零。
+    // record 单元编码 = (generation << 8) | 棋型 raw 值（raw ∈ 0..ANALYSED）；
+    // 读取时若高 8 位不等于当前 generation，视为 TODO（惰性失效）。
+    private var generation = 0
+
+    private fun writeRecord(i: Int, j: Int, k: Int, raw: Int) {
+        record[i][j][k] = (generation shl GENERATION_SHIFT) or raw
+    }
+
+    private fun readRecord(i: Int, j: Int, k: Int): Int {
+        val v = record[i][j][k]
+        return if ((v ushr GENERATION_SHIFT) == generation) v and 0xFF else TODO
+    }
+
+    /** 重置：世代自增使 record 惰性失效（O(1)）；count 仍需逐项清零 */
     fun reset() {
-        for (i in 0 until BoardConstants.BOARD_SIZE) {
-            for (j in 0 until BoardConstants.BOARD_SIZE) {
-                for (k in 0 until 4) {
-                    record[i][j][k] = TODO
+        generation++
+        if (generation >= MAX_GENERATION) {
+            // 世代接近移位溢出：全量清零 record 后复位世代
+            for (i in 0 until BoardConstants.BOARD_SIZE) {
+                for (j in 0 until BoardConstants.BOARD_SIZE) {
+                    for (k in 0 until 4) {
+                        record[i][j][k] = TODO
+                    }
                 }
             }
+            generation = 1
         }
         for (i in 0 until 20) {
             count[0][i] = 0
@@ -105,10 +128,10 @@ class GobangEvaluator {
         for (i in 0 until SIZE) {
             for (j in 0 until SIZE) {
                 if (boardArr[i * SIZE + j] != 0) {
-                    if (record[i][j][0] == TODO) analysisHorizontal(boardArr, i, j)
-                    if (record[i][j][1] == TODO) analysisVertical(boardArr, i, j)
-                    if (record[i][j][2] == TODO) analysisLeft(boardArr, i, j)
-                    if (record[i][j][3] == TODO) analysisRight(boardArr, i, j)
+                    if (readRecord(i, j, 0) == TODO) analysisHorizontal(boardArr, i, j)
+                    if (readRecord(i, j, 1) == TODO) analysisVertical(boardArr, i, j)
+                    if (readRecord(i, j, 2) == TODO) analysisLeft(boardArr, i, j)
+                    if (readRecord(i, j, 3) == TODO) analysisRight(boardArr, i, j)
                 }
             }
         }
@@ -120,7 +143,7 @@ class GobangEvaluator {
                 val stone = boardArr[i * SIZE + j]
                 if (stone != 0) {
                     for (k in 0 until 4) {
-                        val ch = record[i][j][k]
+                        val ch = readRecord(i, j, k)
                         if (ch in checkSet) {
                             count[stone][ch]++
                         }
@@ -148,9 +171,11 @@ class GobangEvaluator {
         // 根据轮次权重不同：当前方进攻权重更高
         if (turn == WHITE) {
             if (count[WHITE][FOUR] > 0) return 9990       // 活四必胜
-            if (count[WHITE][SFOUR] > 0) return 9980       // 冲四
+            if (count[WHITE][SFOUR] > 0) return 9980       // 冲四（含四三，本手可成五）
             if (count[BLACK][FOUR] > 0) return -9970       // 对方活四必须防
             if (count[BLACK][SFOUR] > 0 && count[BLACK][THREE] > 0) return -9960 // 对方冲四+活三
+            // 双活三：两步不可防的必胜组合（须低于对方活四/四三必应档，高于单活三）
+            if (count[WHITE][THREE] >= 2) return 9985
             if (count[WHITE][THREE] > 0 && count[BLACK][SFOUR] == 0) return 9950 // 我方活三
             if (count[BLACK][THREE] > 1 && count[WHITE][SFOUR] == 0 && count[WHITE][THREE] == 0 && count[WHITE][STHREE] == 0) return -9940
             // 加权计算
@@ -166,9 +191,11 @@ class GobangEvaluator {
             if (count[BLACK][STWO] > 0) bvalue += count[BLACK][STWO]
         } else {
             if (count[BLACK][FOUR] > 0) return 9990
-            if (count[BLACK][SFOUR] > 0) return 9980
+            if (count[BLACK][SFOUR] > 0) return 9980       // 冲四（含四三，本手可成五）
             if (count[WHITE][FOUR] > 0) return -9970
             if (count[WHITE][SFOUR] > 0 && count[WHITE][THREE] > 0) return -9960
+            // 双活三：两步不可防的必胜组合（须低于对方活四/四三必应档，高于单活三）
+            if (count[BLACK][THREE] >= 2) return 9985
             if (count[BLACK][THREE] > 0 && count[WHITE][SFOUR] == 0) return 9950
             if (count[WHITE][THREE] > 1 && count[BLACK][SFOUR] == 0 && count[BLACK][THREE] == 0 && count[BLACK][STHREE] == 0) return -9940
             if (count[BLACK][THREE] > 1) bvalue += 2000
@@ -210,7 +237,7 @@ class GobangEvaluator {
         analysisLine(line, result, SIZE, j)
         for (x in 0 until SIZE) {
             if (result[x] != TODO) {
-                record[i][x][0] = result[x]
+                writeRecord(i, x, 0, result[x])
             }
         }
     }
@@ -224,7 +251,7 @@ class GobangEvaluator {
         analysisLine(line, result, SIZE, i)
         for (x in 0 until SIZE) {
             if (result[x] != TODO) {
-                record[x][j][1] = result[x]
+                writeRecord(x, j, 1, result[x])
             }
         }
     }
@@ -252,7 +279,7 @@ class GobangEvaluator {
         analysisLine(line, result, k, j - startX)
         for (s in 0 until k) {
             if (result[s] != TODO) {
-                record[startY + s][startX + s][2] = result[s]
+                writeRecord(startY + s, startX + s, 2, result[s])
             }
         }
     }
@@ -280,7 +307,7 @@ class GobangEvaluator {
         analysisLine(line, result, k, j - startX)
         for (s in 0 until k) {
             if (result[s] != TODO) {
-                record[val_startY - s][startX + s][3] = result[s]
+                writeRecord(val_startY - s, startX + s, 3, result[s])
             }
         }
     }

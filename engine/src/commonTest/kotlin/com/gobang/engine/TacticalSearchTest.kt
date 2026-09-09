@@ -93,4 +93,17 @@ class TacticalSearchTest {
         val r = searcher.searchTimed(b, BoardConstants.BLACK, 6, 1000L)
         assertTrue(r.row == 7 && r.col == 6, "Hard timed 应抢占对方双杀点 (7,6)，实际 (${r.row},${r.col})")
     }
+
+    @Test
+    fun `pure search without threat pass still constructs double threat via evaluator`() {
+        // 关闭威胁通道，验证 P1 复合威胁评分足以让固定深度搜索主动选择双杀构造点 (7,6)
+        // （白子置于远处，避免自带活三/冲四干扰黑方选点）
+        val pure = GobangSearcher().apply { threatScanEnabled = false }
+        val b = board(
+            Triple(1, 7, 5), Triple(1, 7, 7), Triple(1, 5, 6), Triple(1, 6, 6),
+            Triple(2, 1, 1), Triple(2, 1, 2), Triple(2, 13, 12), Triple(2, 13, 13),
+        )
+        val r = pure.search(b, BoardConstants.BLACK, 3)
+        assertTrue(r.row == 7 && r.col == 6, "纯搜索应靠评估选择双杀构造点 (7,6)，实际 (${r.row},${r.col})")
+    }
 }
